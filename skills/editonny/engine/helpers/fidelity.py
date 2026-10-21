@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from fractions import Fraction
+import json
 import math
 from pathlib import Path
 import subprocess
@@ -13,6 +14,20 @@ from project_contract import (load_contract, read_json, require_confirmation,
                               settings_hash, source_identity_hash)
 
 
+def _shown_vfr_time(path: Path, at: float) -> float:
+    """Return the presentation time, relative to the stream start, of the frame on screen at `at`."""
+    process = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-read_intervals',
+                              f'{max(0, at - 2):.6f}%{at + 0.001:.6f}', '-show_entries',
+                              'format=start_time:frame=best_effort_timestamp_time', '-of', 'json', str(path)],
+                             capture_output=True, text=True, timeout=60, check=True)
+    data = json.loads(process.stdout)
+    start = float(data.get('format', {}).get('start_time') or 0)
+    shown = [float(f['best_effort_timestamp_time']) - start for f in data.get('frames', [])
+             if f.get('best_effort_timestamp_time') not in (None, 'N/A')]
+    shown = [t for t in shown if t <= at + 1e-6]
+    return max(shown) if shown else at
+
+
 def _frame(path: Path, at: float, width: int = 192, interpretation: dict | None = None):
     import numpy as np
     facts = probe_video(path)
@@ -20,6 +35,9 @@ def _frame(path: Path, at: float, width: int = 192, interpretation: dict | None 
     rate = float(Fraction(facts['fps_str']))
     if not facts.get('is_vfr'):
         at = math.floor(max(0, at) * rate + 1e-7) / rate
+    else:
+        # -ss returns the first frame at or after `at`; snap to the last presented timestamp instead.
+        at = _shown_vfr_time(path, max(0, at))
     at = max(0, at - min(1e-6, float(Fraction(facts['time_base'])) / 4))
     height = max(2, round(width * facts['display_height'] / facts['display_width']))
     from media_policy import frame_tags

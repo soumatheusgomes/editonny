@@ -129,5 +129,25 @@ class CompositionFidelityTests(unittest.TestCase):
             self.assertEqual(probe_video(output)['pix_fmt'], 'yuv420p10le')
 
 
+class VariableFrameRateReferenceTests(unittest.TestCase):
+    def test_reference_frame_is_the_one_on_screen(self):
+        from fidelity import _frame
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / 'vfr.mp4'
+            # Ten frames whose gray level identifies the frame; irregular steps make the cadence variable.
+            subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'color=black:s=64x64:r=30:d=0.34',
+                '-vf', "geq=lum='N*24':cb=128:cr=128,setpts='(N*0.1+mod(N,2)*0.03)/TB'",
+                '-fps_mode', 'passthrough', '-video_track_timescale', '600', '-c:v', 'libx264', '-qp', '0',
+                '-pix_fmt', 'yuv420p', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709',
+                str(source)], check=True)
+            self.assertTrue(probe_video(source)['is_vfr'])
+            # Frame 3 is presented at 0.33 s and frame 4 at 0.40 s; 0.36 s still shows frame 3.
+            shown = _frame(source, 0.36, width=64)
+            expected = _frame(source, 0.33, width=64)
+            following = _frame(source, 0.40, width=64)
+            self.assertAlmostEqual(float(abs(shown - expected).mean()), 0, places=3)
+            self.assertGreater(float(abs(shown - following).mean()), 0.02)
+
+
 if __name__ == '__main__':
     unittest.main()

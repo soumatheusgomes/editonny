@@ -270,7 +270,9 @@ def content_hash(path: Path | str) -> str:
             digest.update(block)
         after = os.fstat(stream.fileno())
     current = path.stat()
-    identity = lambda stat: (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+    # Windows: path stat reports creation time as st_ctime, fstat reports metadata change time.
+    identity = lambda stat: (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns,
+                             None if os.name == 'nt' else stat.st_ctime_ns)
     if identity(before) != identity(after) or identity(after) != identity(current):
         raise ValueError(f'Source changed while hashing: {path.name}; inspect it again')
     return digest.hexdigest()

@@ -278,6 +278,19 @@ Checks on the final tree, after the five cycles:
 
 Limits: only the named scenes were rendered, on macOS Apple Silicon. The upgraded Python stack was not exercised on Linux or Intel macOS, and Faster Whisper was not run.
 
+## Windows fixes from a VFR phone edit
+
+On 2026-10-20 an edit on Windows 11 (Python 3.13.15, FFmpeg 8.1.2, Faster Whisper `large-v3-turbo`) of a 464×624 H.264 Baseline phone clip at 89500/2983 FPS (VFR, time base 1/600, ~0.84 Mbps) exposed two engine defects:
+
+- `content_hash` rejected every unchanged file ("Source changed while hashing"). On Windows a path `stat` reports creation time as `st_ctime`, while `fstat` on the open handle reports metadata change time. The identity comparison now ignores `st_ctime_ns` on Windows only; device, inode, size and `st_mtime_ns` still apply everywhere. Test: `ContentHashTests` in `tests/test_engine.py` (fails before the fix).
+- The appearance check compared each output frame with the *following* source frame of a VFR source, because `ffmpeg -ss` returns the first frame at or after the requested time. `fidelity._frame` now snaps a VFR request to the last presented timestamp. On the real clip a moving handheld frame measured p95 ΔE00 15.5 against the following frame and 1.74 against the frame on screen. Test: `VariableFrameRateReferenceTests` in `tests/integration/test_composition_fidelity.py` (fails before the fix).
+
+After both fixes the same edit (cut, then FFmpeg composition with captions and music) still failed appearance: median ΔE00 0.46–0.62, p95 1.86–2.52, with the luminance criterion failing in 6 of 8 samples. A single CRF 18 re-encode of the same source measured p95 1.63–1.85. The gap comes from the two encode generations (cut, then composition) on an already heavily compressed source. The check was not relaxed; the video was handed over outside `workspace export`, with that limit disclosed.
+
+On this Windows checkout, before → after the fixes: `python -m unittest discover -s tests` went from 2 failures + 30 errors (103 tests) to 2 failures + 25 errors (105 tests). `test:engine` went from 12 failures + 29 errors (100 tests) to 4 failures + 5 errors (101 tests). No new failure appeared. What still fails is environmental: symlink creation without Developer Mode, `core.autocrlf=true` CRLF checkouts (token, README art and icon freshness checks), and locale-dependent number formatting. `npm test` cannot start here because `python3` resolves to the Microsoft Store alias.
+
+Limits: Windows behavior only, one source. Other VFR containers, Linux/macOS reruns and `npm run test:browser` were not exercised.
+
 ## Reproduce and invalidate
 
 ```sh

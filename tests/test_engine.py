@@ -279,5 +279,27 @@ class EngineTests(unittest.TestCase):
         self.assertIn('window.__timelines["three-steps-02"] = tl;', plain)
 
 
+class ContentHashTests(unittest.TestCase):
+    def hash_with_open_ctime(self, os_name):
+        sys.path.insert(0, str(ENGINE / 'helpers'))
+        import common
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'clip.mp4'
+            path.write_bytes(b'video')
+            real = os.stat(path)
+            # Windows path stat reports creation time as st_ctime; fstat reports metadata change time.
+            opened = mock.Mock(st_dev=real.st_dev, st_ino=real.st_ino, st_size=real.st_size,
+                               st_mtime_ns=real.st_mtime_ns, st_ctime_ns=real.st_ctime_ns + 1)
+            with mock.patch.object(common.os, 'name', os_name), mock.patch.object(common.os, 'fstat', return_value=opened):
+                return common.content_hash(path)
+
+    def test_windows_ctime_semantics_do_not_reject_an_unchanged_file(self):
+        self.assertEqual(len(self.hash_with_open_ctime('nt')), 64)
+
+    def test_ctime_change_still_rejects_elsewhere(self):
+        with self.assertRaisesRegex(ValueError, 'changed while hashing'):
+            self.hash_with_open_ctime('posix')
+
+
 if __name__ == '__main__':
     unittest.main()
