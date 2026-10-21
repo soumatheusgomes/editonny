@@ -376,7 +376,6 @@ def use_scene(p, id_, start, end=None, cut=None):
         if not covers: print('  Add a frame block: {"scene": "frame", "start": %.2f, "end": %.2f}. Use one continuous block for adjacent panels.' % (start, end))
     if c.get('parameters'): print('  Customize parameters near the start of compositions/scenes/%s.html' % new)
     if c.get('texts'): print('  Customize text and countNumber values in compositions/scenes/%s.html' % new)
-    print('  Finish with: python3 %s --project "%s" --sounds' % (os.path.join(origin_dir(), 'apply.py'), p))
     if row.get('overPerson'): print('  Run camera_motion.py after adding scenes; camera motion pauses during this interval')
     if c['layout'] == 'frame' and not any(b.get('scene') == 'frame' and isinstance(b.get('start'), (int, float)) and b['start'] < start - 0.4 and (not isinstance(b.get('end'), (int, float)) or b['end'] > start) for b in proj.get('blocks', [])):
         print('  This panel waits for the frame to close; its closedAt delay is handled automatically')
@@ -541,7 +540,9 @@ def main(argv=None):
         from project_contract import managed_config
         try:
             managed = managed_config(args.project / configuration.get('edit', '../edit'))
-            if managed and managed['workflow']['visuals']['scenes'] == 'off':
+            if managed and args.sounds and not managed['workflow']['audio']['effects']:
+                parser.error('Sound effects were not confirmed; propose a settings revision first')
+            if managed and not args.sounds and managed['workflow']['visuals']['scenes'] == 'off':
                 parser.error('Visual scenes were not confirmed; propose a settings revision first')
             allowed = managed['workflow']['visuals'].get('allowedSceneIds', []) if managed else []
             if allowed and args.use and args.use not in allowed:

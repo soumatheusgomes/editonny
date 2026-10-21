@@ -40,6 +40,26 @@ class IntakeTests(unittest.TestCase):
         self.assertEqual(proposal['config']['workflow']['editing']['scope'], 'captions')
         self.assertTrue(proposal['confirmationRequired'])
 
+    def test_hdr_and_visual_requests_do_not_enable_audio_or_color_conversion(self):
+        inspection = self.source()
+        inspection['sources'][0]['facts'].update(is_hdr=True, bit_depth=10, pix_fmt='yuv420p10le',
+            color_transfer='arib-std-b67', color_primaries='bt2020', color_space='bt2020nc')
+        workflow = self.i.propose_settings(inspection, {'visuals': {
+            'scenes': 'agent', 'transitions': 'agent'}})['config']['workflow']
+        self.assertFalse(workflow['audio']['music'])
+        self.assertFalse(workflow['audio']['effects'])
+        self.assertEqual(workflow['color']['mode'], 'preserve')
+        self.assertEqual(workflow['color']['target'], 'source')
+        self.assertIsNone(workflow['color']['conversion'])
+        self.assertEqual(workflow['encoding']['bitDepth'], 'source')
+
+    def test_explicit_audio_requests_override_only_the_requested_default(self):
+        for feature in ('music', 'effects'):
+            with self.subTest(feature=feature):
+                audio = self.i.propose_settings(self.source(), {'audio': {feature: True}})['config']['workflow']['audio']
+                self.assertTrue(audio[feature])
+                self.assertFalse(audio['effects' if feature == 'music' else 'music'])
+
     def test_proposal_attached_to_its_inspection_report_serializes(self):
         # Mirrors `inspect --requested`, which prints the report with its proposal attached.
         report = self.source()

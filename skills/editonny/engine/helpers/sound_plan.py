@@ -835,7 +835,7 @@ def main(argv=None):
     if proj:
         retained = apply_in_project(plan_value, proj["file"].parent, proj, window_value)
         print(f"""project.json: {len(plan_value['sounds'])} plan sounds in "sounds"; files in assets/sfx, notices in assets/sfx/LICENSES.txt""" + (f'; {len(retained)} existing sounds preserved' if retained else ""))
-        print('next: python3 build.py compose, render, then mix music with helpers/mix_music.py')
+        print('next: python3 build.py compose, then render')
     if a.apply_value:
         vs = a.video_output or str(Path(a.apply_value).with_name(Path(a.apply_value).stem + "_sfx.mp4"))
         if Path(vs).resolve() == Path(a.apply_value).resolve():

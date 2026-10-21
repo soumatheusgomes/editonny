@@ -11,7 +11,6 @@ Create an engine project first, then apply the exact English scene ID:
 ```sh
 python3 editonny.py scene --project /path/to/project --use revenue-counter --start 17.6 --end 21.3
 python3 editonny.py scene --project /path/to/project --use transition-glow --cut 25.5
-python3 editonny.py scene --project /path/to/project --sounds
 ```
 
 From this directory, `python3 apply.py` accepts the same scene options. `--use` copies the selected scene and its required video assets, assigns independent composition and DOM IDs, and adds an entry to `project.json.scenes`. Existing project footage is preserved. Missing, corrupt, uncataloged, or unsafe media paths fail before copying resources. Never replace a user's original footage to repair the bundle.
@@ -89,7 +88,11 @@ First-party code is MIT, as described by the repository license. Third-party rig
 
 ## Sound and voice
 
-Use a few sounds chosen for meaning. A title can use `title-swoosh`, a change `swish`, an appearance `mouth-pop` or `pop-ui`, repeated list items the same `bubble-pop`, money `cash-register`, a drawn line `pencil` or `pen`, and a closing moment `ding`. Do not assign an error sound simply because an item is negative. Align each sound's audible impact using `anchorSeconds`.
+Music, sound effects, and background ambience are off unless the user explicitly requests them. Applying scenes or transitions does not authorize audio. Preserve source audio within the requested scope; skip sound generation and music helpers for silent visual additions.
+
+For explicitly requested and confirmed effects, generate scene sounds with `python3 editonny.py scene --project /path/to/project --sounds`. Managed projects reject this command while `workflow.audio.effects` is false.
+
+Use a few requested sounds chosen for meaning. A title can use `title-swoosh`, a change `swish`, an appearance `mouth-pop` or `pop-ui`, repeated list items the same `bubble-pop`, money `cash-register`, a drawn line `pencil` or `pen`, and a closing moment `ding`. Do not assign an error sound simply because an item is negative. Align each sound's audible impact using `anchorSeconds`.
 
 `--sounds` writes scene-owned events to `events.json` while keeping other events. Loudness is calibrated from the loudest 100 ms RMS window and the peak; equal peaks do not imply equal perceived loudness. Short effects commonly need a higher peak than long whooshes. The automatic calibration keeps transitions quieter and caps peaks to leave headroom for speech. Rebuild the engine sound plan after writing events.
 

@@ -79,7 +79,9 @@ Use `helpers/align_words.py` after cut verification. Measure faces and layouts b
 
 ## 4. Sound and finishing
 
-Place sound peaks on the movement they support. Avoid arbitrary effects on every word. Keep voice intelligible, duck music where necessary, and inspect the actual mixed waveform. Final loudness normally targets -14 LUFS with true-peak headroom; source quality and the delivery requirement may justify another explicit target. Recheck true peaks after encoding, because an encoder can create overshoot.
+Do not add music, sound effects, or background ambience unless explicitly requested. Editing, pacing, captions, scenes, transitions, and visual references do not imply audio permission. Keep `workflow.audio.music` and `workflow.audio.effects` false for unrequested additions; preserve audio already in the source within the requested scope. Do not run scene `--sounds`, `sound_plan.py`, or music selection/mixing merely as a finishing step.
+
+When additional audio was requested and confirmed, place sound peaks on the movement they support. Avoid arbitrary effects on every word. Keep voice intelligible, duck music where necessary, and inspect the actual mixed waveform. Final loudness normally targets -14 LUFS with true-peak headroom; source quality and the delivery requirement may justify another explicit target. Recheck true peaks after encoding, because an encoder can create overshoot.
 
 Do not claim that pitch, breathing, or room metrics alone identify mistakes. Listen and compare the edited phrase to the original. Preserve intentional pauses and conversational meaning.
 

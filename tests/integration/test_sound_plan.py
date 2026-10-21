@@ -52,6 +52,7 @@ class SoundPlanTests(unittest.TestCase):
                 result = subprocess.run([sys.executable, str(HELPER), '--project', str(project), *options],
                                         capture_output=True, text=True, timeout=30)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertNotIn('mix_music.py', result.stdout)
                 plan = json.loads((project / 'sound_plan.json').read_text())
                 self.assertEqual(plan['video_duration'], 4.5)
                 self.assertEqual(len(plan['sounds']), 1)

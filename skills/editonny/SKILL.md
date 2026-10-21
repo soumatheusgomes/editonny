@@ -38,6 +38,8 @@ Build the card from the actual request, `proposal.summary` and the observed fact
 
 Defaults are **proposals**, not permission: source appearance/geometry/FPS, standard editorial cleanup, faithful captions on (up to three words), voice normalization at -14 LUFS, processing headroom -1.5 dBTP, encoded ceiling -1 dBTP, denoise/music/effects/scenes/camera motion off, agent sample review. Respect narrower scopes: captions-only does not normalize audio or recut speech. Explain unsupported combinations before acceptance; offer concrete choices without silently changing them.
 
+**Additional audio is opt-in only.** Do not add music, sound effects, background ambience, risers, whooshes, or sounds attached to scenes or transitions unless the user explicitly requests that audio. A request to edit, improve pacing, make a dynamic video, add captions, use scenes, or follow a visual reference does not authorize additional audio. Keep `workflow.audio.music` and `workflow.audio.effects` false unless the corresponding audio was requested; do not enable them merely to complete a style or sample. Preserve audio already present in the recording within the requested editing scope.
+
 ### How the card looks
 
 The card is the person's whole decision, so it must read in a few seconds. Send it as Markdown, never inside a code block, following this layout in the user's language:
@@ -139,6 +141,8 @@ Search with `catalog` and choose scenes by `whenToUse`, category, and duration i
 ## Export and verify
 
 Prefer the cut-only master when it already satisfies the request; another composition encode is unnecessary. Choose a supported route using the workflow's media policy. Native visual composition is CFR; HDR overlays and unsupported SDR profiles are blocked until conformance evidence exists. VFR cut-only keeps timestamps with hard joins. Offer a confirmed conversion or supported alternative when needed; never downgrade silently.
+
+HDR footage does not require SDR conversion for cutting. If requested captions or scenes need an unsupported HDR overlay route, explain that limitation and offer the HDR cut-only master or a separately accepted SDR version. A general editing or caption request does not authorize conversion. SDR contact sheets and grade-comparison images are display derivatives, not evidence that the output master was converted or that HDR appearance was verified.
 
 For native composition, use `build.py hf lint`, `build.py hf check`, and the pinned renderer with an explicit new candidate output path. Review the representative sample, record its exact evidence with `workspace review`, and record user-approved before/after references with `workspace reference` for requested image treatment. Agent autonomy applies to sample review only after initial settings acceptance; user sample review remains mandatory when selected.
 

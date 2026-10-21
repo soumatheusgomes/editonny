@@ -112,11 +112,9 @@ def _has_filter(name: str) -> bool:
 def hdr_to_sdr_chain(info: dict) -> str:
     """Filters that turn an HDR frame (HLG or PQ) into SDR BT.709 8-bit; '' for SDR sources.
 
-    The one conversion used by render_cut, the grade comparison, contact sheets and timeline
-    views, so the frame judged for color is the frame the cut shows. With zscale+tonemap it
-    tonemaps; without them (Homebrew ffmpeg) it converts the primaries and matrix with
-    `colorspace`, no extra contrast or saturation (a grade picked on the preview must not stack
-    on a hidden boost).
+    Used only for SDR display derivatives: grade comparisons, contact sheets and timeline
+    images. Master cuts preserve HDR through media_policy unless conversion was confirmed.
+    Requires zscale+tonemap; an approximate color conversion is not an acceptable fallback.
     """
     if not info.get("is_hdr"):
         return ""
@@ -183,7 +181,7 @@ def candidates_montage(video: Path, candidates: list[tuple[str, str]], t: float,
         if err:
             raise ValueError(f"candidate '{label}' has an invalid filter: {err}")
         # Grade at a decent size first (grades are resolution independent), then downscale.
-        # HDR sources go through the same SDR conversion as render_cut, before the grade.
+        # Compare grades on SDR display derivatives; this does not convert the master cut.
         work_w = min(1080, info.get("display_width") or 1080)
         work_w -= work_w % 2
         hdr = hdr_to_sdr_chain(info)
@@ -199,7 +197,7 @@ def candidates_montage(video: Path, candidates: list[tuple[str, str]], t: float,
     d.text((pad, 18), f'{video.name} · color comparison at {t:.2f}s', fill=FG, font=ui_font(24, bold=True))
     f_lab, f_small = ui_font(20, bold=True), ui_font(14)
     if info.get("is_hdr"):
-        d.text((pad, 54), "HDR source converted to SDR using the cut's conversion path", fill=DIM, font=f_small)
+        d.text((pad, 54), "SDR display comparison of HDR source; master color policy is unchanged", fill=DIM, font=f_small)
     for i, ((label, flt), img) in enumerate(zip(candidates, tiles)):
         x = pad + i * (tw + gap)
         sheet.paste(img.resize((tw, th)) if img.size != (tw, th) else img, (x, head))

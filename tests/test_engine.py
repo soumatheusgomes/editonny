@@ -19,6 +19,62 @@ VISUALS = ROOT / 'skills/editonny/visuals'
 
 
 class EngineTests(unittest.TestCase):
+    def test_scene_application_keeps_audio_unchanged_without_suggesting_sounds(self):
+        sys.path.insert(0, str(VISUALS))
+        import apply
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            sounds = [{'file': 'assets/user-sound.wav', 'start': 1}]
+            (project / 'project.json').write_text(json.dumps({'sounds': sounds}))
+            events = project / 'events.json'
+            events.write_text('[{"t": 1, "sound": "user-sound.wav"}]')
+            original_events = events.read_bytes()
+            output = io.StringIO()
+            with mock.patch.object(apply, 'copy_assets', return_value=0), contextlib.redirect_stdout(output), warnings.catch_warnings():
+                warnings.simplefilter('ignore', ResourceWarning)
+                apply.use_scene(str(project), 'three-steps', 0, 6)
+            self.assertEqual(json.loads((project / 'project.json').read_text())['sounds'], sounds)
+            self.assertEqual(events.read_bytes(), original_events)
+            self.assertNotIn('--sounds', output.getvalue())
+
+    def test_scene_sound_generation_respects_confirmed_audio_independently_of_visuals(self):
+        sys.path.insert(0, str(ENGINE / 'helpers'))
+        from common import content_hash
+        from workflow_fixtures import config, confirmation
+        from workspace import create_workspace
+        for effects, scenes in ((False, 'requested'), (True, 'requested'), (True, 'off')):
+            with self.subTest(effects=effects, scenes=scenes), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                source = root / 'original.mp4'
+                source.write_bytes(b'original footage')
+                inspection = {'sources': [{'id': 'source', 'path': str(source),
+                                          'sha256': content_hash(source), 'streams': [0]}]}
+                c = config(root / 'downloads')
+                c['workflow']['audio']['effects'] = effects
+                c['workflow']['visuals']['scenes'] = scenes
+                project = create_workspace(root / 'downloads', 'Audio scope', inspection, c, confirmation(c, inspection))
+                path = project / 'project.json'
+                if scenes != 'off':
+                    current = json.loads(path.read_text())
+                    current['scenes'] = [{'sceneId': 'transition-glow', 'start': 0, 'end': 1}]
+                    path.write_text(json.dumps(current))
+                events = project / 'events.json'
+                events.write_text('[{"t": 2, "sound": "user-sound.wav"}]')
+                original_project, original_events = path.read_bytes(), events.read_bytes()
+                result = subprocess.run([sys.executable, str(VISUALS / 'apply.py'),
+                    '--project', str(project), '--sounds'], capture_output=True, text=True)
+                self.assertEqual(path.read_bytes(), original_project)
+                self.assertEqual(source.read_bytes(), b'original footage')
+                if not effects:
+                    self.assertNotEqual(result.returncode, 0, result.stdout)
+                    self.assertIn('Sound effects were not confirmed', result.stderr)
+                    self.assertEqual(events.read_bytes(), original_events)
+                else:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    generated = json.loads(events.read_text())
+                    self.assertEqual(generated[0 if scenes == 'off' else -1]['sound'], 'user-sound.wav')
+                    self.assertEqual(sum(bool(e.get('sceneId')) for e in generated), int(scenes != 'off'))
+
     def test_missing_media_does_not_modify_project(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

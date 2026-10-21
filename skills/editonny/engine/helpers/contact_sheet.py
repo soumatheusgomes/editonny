@@ -84,8 +84,9 @@ def extract_frame(video: Path | str, t: float, width: int | None = None, height:
     The seek lands half a frame early so the frame whose timestamp is closest to `t`
     is the first one kept (ffmpeg drops frames that start before the seek point).
     `vf` is an extra filter chain applied before scaling (e.g. a grade).
-    `hdr`: True converts an HDR source to SDR with the same chain as render_cut (so colors match
-    the cut); None probes the file; False means the caller already handled it (or SDR).
+    `hdr`: True tone-maps HDR to an SDR display image; None probes the file; False means the
+    caller already handled it (or SDR). This display derivative does not convert the master
+    or verify its HDR appearance.
     """
     info = None
     if fps is None or duration is None or hdr is None:
