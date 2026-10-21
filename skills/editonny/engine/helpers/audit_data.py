@@ -6,6 +6,7 @@ import argparse
 import difflib
 import json
 import math
+import os
 import re
 import shutil
 import subprocess
@@ -177,6 +178,14 @@ def parse_tesseract_tsv(tsv: str, width_value: int, height_value: int) -> list[d
     return out
 
 
+def tesseract_languages(installed: list[str]) -> str:
+    """Tesseract `-l` value. EDITONNY_OCR_LANGS (for example "fra" or "deu+eng") picks the installed languages to read
+    with, in that order: Tesseract weighs the first one most, so a combined eng+fra read loses French accents that fra
+    alone keeps. Without it, the guide's spoken languages."""
+    wanted = [x for x in re.split(r"[+,\s]+", os.environ.get("EDITONNY_OCR_LANGS", "")) if x in installed]
+    return "+".join(wanted) or "+".join(x for x in ("eng", "por", "spa") if x in installed) or "eng"
+
+
 def read_directory(engine_value: tuple[str, object], directory: Path) -> dict[str, list[dict]]:
     if engine_value[0] == "vision":
         output_value = directory / "ocr.json"
@@ -185,7 +194,7 @@ def read_directory(engine_value: tuple[str, object], directory: Path) -> dict[st
     out: dict[str, list[dict]] = {}
     from PIL import Image  # noqa: PLC0415
     installed = subprocess.run([str(engine_value[1]), "--list-langs"], capture_output=True, text=True).stdout.split()
-    lang = "+".join(x for x in ("eng", "por", "spa") if x in installed) or "eng"   # The guide's spoken languages.
+    lang = tesseract_languages(installed)
     for img in sorted(directory.glob("f_*.jpg")):
         w, h = Image.open(img).size
         # A failed read must stop the audit instead of passing as a frame without text.
