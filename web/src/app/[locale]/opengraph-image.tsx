@@ -3,7 +3,7 @@ import { hasLocale } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { ImageResponse } from 'next/og';
-import { routing, type AppLocale } from '@/i18n/routing';
+import { routing, RTL_LOCALES, type AppLocale } from '@/i18n/routing';
 import { AUTHOR, BRAND } from '@/lib/site';
 
 export const size = { width: 1200, height: 630 };
@@ -39,7 +39,8 @@ export default async function OpenGraphImage({ params }: { params: Promise<{ loc
   // The proxy skips this route, so unknown prefixes reach it directly.
   if (!hasLocale(routing.locales, requested)) notFound();
   const locale: AppLocale = requested;
-  const t = await getTranslations({ locale, namespace: 'Home' });
+  // Satori has no right-to-left shaping and fails on Arabic fallback fonts, so right-to-left locales use the English card.
+  const t = await getTranslations({ locale: RTL_LOCALES.includes(locale) ? routing.defaultLocale : locale, namespace: 'Home' });
   const keyword = t('hero.words').split('|')[0];
   const caption = [t('anatomy.captionA'), t('anatomy.captionB'), t('anatomy.captionC')].map(part => part.trim());
   const request = [

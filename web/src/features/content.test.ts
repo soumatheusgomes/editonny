@@ -1,9 +1,11 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { routing } from '@/i18n/routing';
+import arExamples from '@content/examples/ar.json';
 import enExamples from '@content/examples/en-US.json';
 import esExamples from '@content/examples/es.json';
 import ptExamples from '@content/examples/pt-BR.json';
+import arScenes from '@content/scenes/ar.json';
 import esScenes from '@content/scenes/es.json';
 import ptScenes from '@content/scenes/pt-BR.json';
 import source from '../../../skills/editonny/visuals/catalog.json';
@@ -21,7 +23,7 @@ describe('scene catalog', () => {
     for (const scene of scenes) expect(Object.keys(scene).sort()).toEqual(['category', 'categoryLabel', 'duration', 'format', 'hidesCaptions', 'id', 'layout', 'name', 'whenToUse']);
   });
 
-  it.each([['pt-BR', ptScenes], ['es', esScenes]] as const)('%s translates every scene and category, with no unknown ids', (_, translation) => {
+  it.each([['pt-BR', ptScenes], ['es', esScenes], ['ar', arScenes]] as const)('%s translates every scene and category, with no unknown ids', (_, translation) => {
     const ids = source.scenes.map(scene => scene.id);
     expect(Object.keys(translation.scenes).sort()).toEqual([...ids].sort());
     for (const [id, text] of Object.entries(translation.scenes)) {
@@ -57,7 +59,7 @@ describe('examples', () => {
   });
 
   // Checks the files themselves: getExamples falls back to English, which would hide a missing translation.
-  it.each([['en-US', enExamples], ['pt-BR', ptExamples], ['es', esExamples]] as const)('%s text file covers every example, with no unknown ids', (_, file) => {
+  it.each([['en-US', enExamples], ['pt-BR', ptExamples], ['es', esExamples], ['ar', arExamples]] as const)('%s text file covers every example, with no unknown ids', (_, file) => {
     const text: Record<string, { title: string; summary: string; when: string; goal: string; tips: string[] }> = file;
     expect(Object.keys(text).sort()).toEqual(EXAMPLES.map(example => example.id).sort());
     for (const [id, entry] of Object.entries(text)) {

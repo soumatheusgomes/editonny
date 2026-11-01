@@ -177,6 +177,7 @@ const AGENT = {
   'en-US': ['Cloning github.com/soumatheusgomes/editonny into a temporary folder', 'Reading skills/editonny/SKILL.md and its complete setup procedure', 'Installing for Codex and Claude Code; your settings are preserved', 'Engine, renderer, transcription model, and local OCR ready', 'Diagnostics and synthetic sample passed. Restart your agent.'],
   'pt-BR': ['Clonando github.com/soumatheusgomes/editonny em uma pasta temporária', 'Lendo skills/editonny/SKILL.md e o procedimento de setup completo', 'Instalando para Codex e Claude Code; suas configurações ficam preservadas', 'Engine, renderizador, modelo de transcrição e OCR local prontos', 'Diagnósticos e amostra sintética aprovados. Reinicie o agente.'],
   es: ['Clonando github.com/soumatheusgomes/editonny en una carpeta temporal', 'Leyendo skills/editonny/SKILL.md y su preparación completa', 'Instalando para Codex y Claude Code; tu configuración se conserva', 'Motor, renderizador, modelo de transcripción y OCR local listos', 'Diagnósticos y muestra sintética aprobados. Reinicia el agente.'],
+  ar: ['استنساخ github.com/soumatheusgomes/editonny في مجلد مؤقت', 'قراءة skills/editonny/SKILL.md وإجراء الإعداد الكامل', 'التثبيت لـ Codex وClaude Code؛ إعداداتك محفوظة', 'المحرك ومحرك التصيير ونموذج التفريغ وOCR المحلي جاهزة', 'نجح التشخيص والعينة الاصطناعية. أعد تشغيل الوكيل.'],
 };
 
 /** Agent terminal receiving the canonical install request, then reporting each setup step. */

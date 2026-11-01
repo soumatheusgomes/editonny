@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { BANNERS } from './banners.mjs';
 import { messages, ROOT } from './lib.mjs';
 
-export const LOCALES = ['en-US', 'pt-BR', 'es'];
+export const LOCALES = ['en-US', 'pt-BR', 'es', 'ar'];
 export const OUT = 'docs/assets/readme';
 
 /** Every banner as { path, content }, rendered from the guide's interface text. */

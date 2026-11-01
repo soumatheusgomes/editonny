@@ -2,3 +2,7 @@
 html { scroll-behavior: smooth; }
 body { min-height: 100vh; overflow-x: clip; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+/* Arabic letters join; tracking (letter-spacing) on labels would break the words apart. */
+:lang(ar) * { letter-spacing: normal !important; }
+/* Monospace stacks have no Arabic glyphs, and their fallback draws disconnected letters; use the sans stack instead. */
+:lang(ar) { --font-mono: var(--font-sans); }

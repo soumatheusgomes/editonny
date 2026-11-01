@@ -3,12 +3,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { AppLocale } from '@/i18n/routing';
 import { REPOSITORY_URL } from '@/lib/links';
+import ar from '../../../messages/ar.json';
 import en from '../../../messages/en-US.json';
 import es from '../../../messages/es.json';
 import pt from '../../../messages/pt-BR.json';
 
 const root = new URL('../../../../', import.meta.url);
-const READMES: Record<AppLocale, [string, typeof en]> = { 'en-US': ['README.md', en], 'pt-BR': ['README.pt-BR.md', pt], es: ['README.es.md', es] };
+const READMES: Record<AppLocale, [string, typeof en]> = { 'en-US': ['README.md', en], 'pt-BR': ['README.pt-BR.md', pt], es: ['README.es.md', es], ar: ['README.ar.md', ar] };
 
 describe.each(Object.entries(READMES))('%s README', (locale, [file, messages]) => {
   const readme = readFileSync(new URL(file, root), 'utf8');

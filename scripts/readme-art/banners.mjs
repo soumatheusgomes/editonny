@@ -131,7 +131,7 @@ ${steps}`,
 }
 
 const STATS = {
-  'en-US': 'Bundled videos', 'pt-BR': 'Vídeos incluídos', es: 'Videos incluidos',
+  'en-US': 'Bundled videos', 'pt-BR': 'Vídeos incluídos', es: 'Videos incluidos', ar: 'فيديوهات مرفقة',
 };
 
 /** Orange closing card with the library counters rolling into place. */

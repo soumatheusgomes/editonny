@@ -12,7 +12,7 @@ export type LanguageOption = {
   native: string;
   /** Region line. */
   sub?: string;
-  /** File stem in `flagBase` (br | us | es). */
+  /** File stem in `flagBase` (br | us | es | eg). */
   flag?: string;
   /** Full image URL instead of `flag`. */
   flagUrl?: string;
@@ -38,6 +38,7 @@ export const LANGUAGES: LanguageOption[] = [
   { code: 'en-US', short: 'EN', native: 'English', sub: 'United States', flag: 'us' },
   { code: 'pt-BR', short: 'PT', native: 'Português', sub: 'Brasil', flag: 'br' },
   { code: 'es', short: 'ES', native: 'Español', sub: 'España · Latinoamérica', flag: 'es' },
+  { code: 'ar', short: 'AR', native: 'العربية', sub: 'مصر · الوطن العربي', flag: 'eg' },
 ];
 
 const fold = (value: string) => value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
