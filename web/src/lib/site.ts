@@ -21,7 +21,7 @@ export const BRAND = {
 
 export type PageKey = 'home' | 'create' | 'catalog' | 'examples' | 'install';
 export const PAGE_PATHS: Record<PageKey, AppPathname> = { home: '/', create: '/create', catalog: '/catalog', examples: '/examples', install: '/install' };
-export const OG_LOCALES: Record<AppLocale, string> = { 'en-US': 'en_US', 'pt-BR': 'pt_BR', es: 'es_ES' };
+export const OG_LOCALES: Record<AppLocale, string> = { 'en-US': 'en_US', 'pt-BR': 'pt_BR', es: 'es_ES', ar: 'ar_EG' };
 
 /** Localized path of a page, with the locale prefix (for example `/pt-br/criar`). */
 export const localizedPath = (locale: AppLocale, page: PageKey) => getPathname({ locale, href: PAGE_PATHS[page] });

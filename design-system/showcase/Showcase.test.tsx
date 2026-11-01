@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Showcase } from './Showcase';
 
-const FLAGS = { br: 'br.svg', us: 'us.svg', es: 'es.svg' };
+const FLAGS = { br: 'br.svg', us: 'us.svg', es: 'es.svg', eg: 'eg.svg' };
 
 afterEach(() => { vi.restoreAllMocks(); localStorage.clear(); });
 

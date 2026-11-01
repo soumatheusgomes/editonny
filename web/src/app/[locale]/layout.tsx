@@ -7,7 +7,7 @@ import { ToastProvider } from '@/features/feedback/ToastProvider';
 import { ThemeScript } from '@/features/theme/ThemeScript';
 import { SiteShell } from '@/components/shell/SiteShell';
 import { ClientMessages, SHELL_MESSAGES } from '@/i18n/ClientMessages';
-import { routing } from '@/i18n/routing';
+import { routing, RTL_LOCALES } from '@/i18n/routing';
 import { BRAND, SITE_URL } from '@/lib/site';
 import { fontVariables } from '../fonts';
 import './globals.css';
@@ -24,7 +24,7 @@ export default async function LocaleLayout({ children, params }: LayoutProps<'/[
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
   return (
-    <html lang={locale} data-theme="dark" className={fontVariables} suppressHydrationWarning>
+    <html lang={locale} dir={RTL_LOCALES.includes(locale) ? 'rtl' : 'ltr'} data-theme="dark" className={fontVariables} suppressHydrationWarning>
       <head><ThemeScript /></head>
       <body>
         <ClientMessages groups={SHELL_MESSAGES}>

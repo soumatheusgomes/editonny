@@ -1,4 +1,4 @@
-**English** · [Português](README.pt-BR.md) · [Español](README.es.md)
+**English** · [Português](README.pt-BR.md) · [Español](README.es.md) · [العربية](README.ar.md)
 
 <a id="top"></a>
 

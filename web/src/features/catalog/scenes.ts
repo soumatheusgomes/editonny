@@ -1,4 +1,5 @@
 import 'server-only';
+import ar from '@content/scenes/ar.json';
 import es from '@content/scenes/es.json';
 import pt from '@content/scenes/pt-BR.json';
 import type { AppLocale } from '@/i18n/routing';
@@ -19,7 +20,7 @@ export type Scene = {
 };
 
 type Translation = { categories: Record<string, string>; scenes: Record<string, { name: string; whenToUse: string }> };
-const TRANSLATIONS: Partial<Record<AppLocale, Translation>> = { 'pt-BR': pt, es };
+const TRANSLATIONS: Partial<Record<AppLocale, Translation>> = { 'pt-BR': pt, es, ar };
 const LAYOUTS: readonly string[] = ['overlay', 'fullscreen', 'frame'];
 
 /** The skill's scene catalog with only its public fields, translated for `locale` with an English fallback per field. */

@@ -5,7 +5,7 @@ import { Force, OnMedia, Row, Section, Specimen, State, type Theme } from './kit
 const SEGMENTS = [{ start: 0, end: 6, beat: 'Hook', quote: 'Nobody told you' }, { start: 6, end: 19, beat: 'Problem', quote: 'Overheated water' }, { start: 19, end: 34, beat: 'Step by step', quote: '94 degrees, then the bloom' }, { start: 34, end: 45, beat: 'Call to action', quote: 'Save it to try' }];
 const noop = () => {};
 
-export type ShowcaseAssets = { image: string; photo: string; flags: Record<'br' | 'us' | 'es', string> };
+export type ShowcaseAssets = { image: string; photo: string; flags: Record<'br' | 'us' | 'es' | 'eg', string> };
 
 const editor = (theme: Theme) => <>
   <Specimen theme={theme} name="Transport" description="Player controls: accent play button, mono timecode, frame and second steppers.">

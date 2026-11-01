@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import ar from '../../messages/ar.json';
 import en from '../../messages/en-US.json';
 import es from '../../messages/es.json';
 import pt from '../../messages/pt-BR.json';
@@ -14,13 +15,13 @@ const args = (text: string) => [...text.matchAll(/\{\s*([a-zA-Z]+)\s*[,}]/g)].ma
 describe('messages', () => {
   const reference = new Map(leaves(en as Tree));
 
-  it.each([['pt-BR', pt], ['es', es]])('%s has exactly the en-US keys and no empty strings', (_, messages) => {
+  it.each([['pt-BR', pt], ['es', es], ['ar', ar]])('%s has exactly the en-US keys and no empty strings', (_, messages) => {
     const entries = new Map(leaves(messages as Tree));
     expect([...entries.keys()].sort()).toEqual([...reference.keys()].sort());
     for (const [key, value] of entries) expect(value.trim(), key).not.toBe('');
   });
 
-  it.each([['pt-BR', pt], ['es', es]])('%s keeps the ICU arguments of every en-US message', (_, messages) => {
+  it.each([['pt-BR', pt], ['es', es], ['ar', ar]])('%s keeps the ICU arguments of every en-US message', (_, messages) => {
     for (const [key, value] of leaves(messages as Tree)) expect(args(value), key).toEqual(args(reference.get(key) ?? ''));
   });
 

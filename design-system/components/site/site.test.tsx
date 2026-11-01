@@ -39,7 +39,7 @@ describe('LanguageSelect', () => {
   });
 
   it('ships the three supported languages', () => {
-    expect(LANGUAGES.map(language => language.code)).toEqual(['en-US', 'pt-BR', 'es']);
+    expect(LANGUAGES.map(language => language.code)).toEqual(['en-US', 'pt-BR', 'es', 'ar']);
   });
 });
 
