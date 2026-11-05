@@ -5,6 +5,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { agentBrowserCommand } from './agent-browser.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const output = resolve(root, '.work');
@@ -12,8 +13,9 @@ await mkdir(output, { recursive: true });
 const project = await mkdtemp(resolve(output, 'three project '));
 const session = `editonny-three-${process.pid}`;
 const exec = promisify(execFile);
+const [agentBrowser, ...agentBrowserPrefix] = agentBrowserCommand();
 const browser = async (...args) => {
-  const { stdout } = await exec('agent-browser', ['--session', session, '--json', ...args], { timeout: 30000 });
+  const { stdout } = await exec(agentBrowser, [...agentBrowserPrefix, '--session', session, '--json', ...args], { timeout: 30000 });
   const response = JSON.parse(stdout);
   assert.equal(response.success, true, JSON.stringify(response.error));
   return response.data;

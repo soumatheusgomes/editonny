@@ -291,7 +291,15 @@ On Windows 11 Pro x64 (Python 3.12.10, Node 24.16.0, uv 0.13.1, FFmpeg 9.0.2, Te
 
 Checks on Windows after the changes: `npm run check` (107 Python with 7 skips, 21 Node, 284 Vitest, lint, both typechecks, 49 icons), `npm run test:engine` (100, 1 native skip), `npm run build`, `npm run test:browser` (183 passed, 27 conditional skips), `python editonny.py doctor` (all OK), `media status` (79/79), and `python scripts/smoke_engine.py` with `hyperframes@0.8.179`: lint, check, and a 3-second 1080×1920 24 fps H.264/AAC render; the frame at 1 s showed timecode frame 24 and the caption. A read-only independent review (Claude subagent; the native Codex reviewer named in `AGENTS.md` was not available in this session) found the strict error handler in the first stdout change and the missing junction check in `graph_runtime.py`, both fixed; the fix had no second review.
 
-Limits: `test:preview`, `test:scenes`, and `test:three` were not run because `agent-browser` is not installed here. Faster Whisper transcription, a real recording, long videos, and file-symlink refusal on Windows (skipped without Developer Mode) were not exercised. macOS evidence above was not re-run after these changes.
+Browser checks used `agent-browser@0.39.1` installed in a temporary folder and prepended to `PATH` for the run; no personal installation was changed. Three harness defects blocked them on Windows, all in test code:
+
+- npm installs the CLI as `.cmd`/`.ps1` shims, which `execFile` cannot start (`spawn agent-browser ENOENT`). `scripts/agent-browser.mjs` resolves a native `agent-browser.exe` or runs the shim's JavaScript entry under the current Node; POSIX keeps `agent-browser`.
+- The preview fixture waited for shutdown with a blocking `sys.stdin.read()`. Windows serializes synchronous pipe I/O, so while that read was pending the first `import numpy` (waveform and filmstrip strips) hung inside its DLL load and the page stopped receiving state ("Polling preserves the draft" timed out after 25 s). A standalone script reproduced the hang with a pending stdin read and imported in 0.3 s with stdin closed. The fixture now polls the pipe with `PeekNamedPipe` on Windows. The preview server itself does not read stdin.
+- The scene check passed each scene's HTML as an `eval` argument, exceeding the Windows command-line limit (`spawn ENAMETOOLONG`). The test server now serves each source and the page fetches it.
+
+After these changes: `npm run test:three` (solid, text, texture, label; screenshot inspected), `npm run test:preview` (4 passed), and `npm run test:scenes` (1 passed, 2D templates, variants, fixed-layout copies, and caption demos) passed, and `npm run check` and `npm run test:engine` passed again.
+
+Limits: Faster Whisper transcription, a real recording, long videos, and file-symlink refusal on Windows (skipped without Developer Mode) were not exercised. macOS evidence above was not re-run after these changes.
 
 ## Reproduce and invalidate
 

@@ -7,6 +7,7 @@ import { EventEmitter, once } from 'node:events';
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
+import { agentBrowserCommand } from '../scripts/agent-browser.mjs';
 
 for (const [file, expected] of [
   ['tests/preview-browser.test.mjs', ['fixture', 'lines']],
@@ -42,8 +43,9 @@ test('preview preserves marks, trims, drafts, and approval confirmation', async 
   const lines = createInterface({ input: fixture.stdout });
   const session = `editonny-preview-${process.pid}`;
   const exec = promisify(execFile);
+  const [agentBrowser, ...agentBrowserPrefix] = agentBrowserCommand();
   const browser = async (...args) => {
-    const { stdout } = await exec('agent-browser', ['--session', session, '--json', ...args], { timeout: 30000 });
+    const { stdout } = await exec(agentBrowser, [...agentBrowserPrefix, '--session', session, '--json', ...args], { timeout: 30000 });
     const response = JSON.parse(stdout);
     assert.equal(response.success, true, JSON.stringify(response.error));
     return response.data;

@@ -60,7 +60,24 @@ def running_preview(video=False):
                 os.environ['EDITONNY_MUSIC_LIBRARY'] = previous
 
 
+def wait_for_stdin_close():
+    """Return when the caller closes stdin. Windows serializes synchronous pipe I/O, so a pending read
+    blocks DLL loads that inspect the standard handles (the first numpy import hangs); poll there instead."""
+    if os.name != 'nt':
+        sys.stdin.read()
+        return
+    import _winapi
+    import msvcrt
+    handle = msvcrt.get_osfhandle(sys.stdin.fileno())
+    while True:
+        try:
+            _winapi.PeekNamedPipe(handle, 0)
+        except OSError:
+            return
+        time.sleep(0.2)
+
+
 if __name__ == '__main__':
     with running_preview(video=True) as (session, url):
         print(json.dumps({'url': url, 'edit': str(session.edit_dir)}), flush=True)
-        sys.stdin.read()
+        wait_for_stdin_close()
