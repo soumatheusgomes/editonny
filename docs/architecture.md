@@ -66,7 +66,7 @@ The 3D scene runtime keeps its facade over focused timing, camera, material, tex
 
 ## Installation and distribution
 
-Installation fingerprints source and destination, refuses foreign paths, stages a complete copy, preserves package `.env` and `engine/.env`, backs up the previous copy, and rolls back failures. Other personal files must live outside the installed skill. Unregistering removes only the selected agent links.
+Installation fingerprints source and destination, refuses foreign paths, stages a complete copy, preserves package `.env` and `engine/.env`, backs up the previous copy, and rolls back failures. Other personal files must live outside the installed skill. Agent links are symlinks, or directory junctions on Windows when symlinks need extra privileges; ownership and containment checks treat both as links. Unregistering removes only the selected agent links.
 
 `scripts/package.py` builds the plugin ZIP, publishes the completed archive locally, and writes a SHA-256 file. The plugin uses an explicit content scope containing the skill, installer, launcher, manifests, README translations, licenses, and canonical documentation; the guide is deployed separately and is not packaged. Secrets, environments, caches, and unexpected symlinks are rejected or excluded.
 

@@ -9,7 +9,7 @@ from fractions import Fraction
 LIMIT_SECONDS = 15.0
 
 def probe(path):
-    out = subprocess.run(['ffprobe', '-v', 'error', '-show_streams', '-show_format', '-of', 'json', path], capture_output=True, text=True)
+    out = subprocess.run(['ffprobe', '-v', 'error', '-show_streams', '-show_format', '-of', 'json', path], capture_output=True, text=True, encoding='utf-8', errors='replace')
     if out.returncode != 0:
         sys.exit(f'error: could not read {path}: {out.stderr.strip()[:200]}')
     d = json.loads(out.stdout)
@@ -33,7 +33,7 @@ def probe(path):
     return dict(fps=fps, w=w, h=h, audio=a is not None, hdr=hdr, dur=float(d['format'].get('duration') or 0))
 
 def has_filter(name):
-    out = subprocess.run(['ffmpeg', '-hide_banner', '-filters'], capture_output=True, text=True).stdout
+    out = subprocess.run(['ffmpeg', '-hide_banner', '-filters'], capture_output=True, text=True, encoding='utf-8', errors='replace').stdout
     return any((len(l.split()) > 1 and l.split()[1] == name for l in out.splitlines()))
 
 def sdr_chain():
@@ -117,8 +117,11 @@ def main():
         c += d
     meta = {'source': os.path.abspath(a.source), 'sourceFps': float(fps), 'fileFps': float(fps_out), 'file': os.path.abspath(a.output), 'duration': round(float(total), 4), 'pieces': request_data, 'hdrConverted': info['hdr'], 'note': "Times are original-source seconds; sourceStart is the piece's offset within the submitted file"}
     js = os.path.splitext(a.output)[0] + '.json'
-    with open(js, 'w') as f:
+    with open(js, 'w', encoding='utf-8') as f:
         json.dump(meta, f, ensure_ascii=False, indent=1)
     print(f'ok {a.output} ({float(total):.2f} s, {n} piece(s), {float(fps_out):.2f} fps) + {os.path.basename(js)}')
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     main()

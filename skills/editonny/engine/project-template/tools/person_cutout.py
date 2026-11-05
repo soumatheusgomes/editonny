@@ -21,7 +21,7 @@ def error(msg, code=2):
     sys.exit(code)
 
 def count_frames(path):
-    r = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-count_packets', '-show_entries', 'stream=nb_read_packets', '-of', 'csv=p=0', path], capture_output=True, text=True)
+    r = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-count_packets', '-show_entries', 'stream=nb_read_packets', '-of', 'csv=p=0', path], capture_output=True, text=True, encoding='utf-8', errors='replace')
     try:
         return int(r.stdout.strip().split(',')[0])
     except ValueError:
@@ -81,7 +81,7 @@ def main():
         tl = json.load(f)
     (fps, W, H) = (tl['fps'], tl['width'], tl['height'])
     print('Extracting the person (first run takes about 3 minutes per minute of video)...', flush=True)
-    proc = subprocess.Popen(['uv', 'run', '--directory', skill, 'python', 'helpers/matte.py', '--edit-dir', edit, '--json'], stdout=subprocess.PIPE, text=True, bufsize=1, env=dict(os.environ, PYTHONUNBUFFERED='1'))
+    proc = subprocess.Popen(['uv', 'run', '--directory', skill, 'python', 'helpers/matte.py', '--edit-dir', edit, '--json'], stdout=subprocess.PIPE, text=True, bufsize=1, env=dict(os.environ, PYTHONUNBUFFERED='1'), encoding='utf-8', errors='replace')
     body = []
     for line in proc.stdout:
         if body or line.rstrip('\n') == '{':
@@ -126,4 +126,7 @@ def main():
         json.dump(info, f, ensure_ascii=False, indent=1)
     print(f'ok: {a.output} ({done} frames, {len(intervals)} intervals)')
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     main()

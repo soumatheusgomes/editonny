@@ -225,7 +225,7 @@ def score_scenes(video: Path, tmp: Path) -> tuple[np.ndarray, np.ndarray]:
     times_value: list[float] = []
     scores: list[float] = []
     t = None
-    for line_value in (tmp / "scene-scores.txt").read_text(errors="replace").splitlines():
+    for line_value in (tmp / "scene-scores.txt").read_text(errors="replace", encoding='utf-8').splitlines():
         m = re.search(r"pts_time:(-?[\d.]+)", line_value)
         if m:
             t = float(m.group(1))
@@ -1989,7 +1989,7 @@ def main(argv: list[str] | None = None) -> int:
         with tempfile.TemporaryDirectory(prefix="editonny-measure-") as tmp_s:
             tmp = Path(tmp_s)
             times_q, frame_scores = score_scenes(video, tmp)
-            with open(measurements / "scene-scores.csv", "w", newline="") as fh:
+            with open(measurements / "scene-scores.csv", "w", newline="", encoding='utf-8') as fh:
                 wr = csv.writer(fh)
                 wr.writerow(["frame", "t", "note"])
                 for i, (tq, sq) in enumerate(zip(times_q, frame_scores)):

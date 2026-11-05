@@ -41,7 +41,7 @@ def doctor(as_json=False, probe_media=False):
         try:
             result = subprocess.run([str(python), '-c',
                 'import numpy, PIL, cv2, onnxruntime; import sys; print(sys.version.split()[0])'],
-                capture_output=True, text=True, timeout=30)
+                capture_output=True, text=True, timeout=30, encoding='utf-8', errors='replace')
             check('Python engine', result.returncode == 0, result.stdout.strip() or 'Dependencies are incomplete; run install.py again.')
         except (OSError, subprocess.TimeoutExpired) as error:
             check('Python engine', False, str(error))
@@ -65,10 +65,10 @@ def doctor(as_json=False, probe_media=False):
                 fingerprint.update(path.read_bytes())
     marker = SKILL / '.editonny-install.json'
     identity = {'packageRoot': str(SKILL), 'engineRoot': str(ENGINE), 'codeFingerprint': fingerprint.hexdigest(),
-                'installedFingerprint': json.loads(marker.read_text()).get('sha256') if marker.is_file() else None,
+                'installedFingerprint': json.loads(marker.read_text(encoding='utf-8')).get('sha256') if marker.is_file() else None,
                 'layout': 'engine/visuals', 'mediaIntegrity': 'Run media status to verify bundled media'}
     capabilities = probe_capabilities()
-    report = {'product': 'editonny', 'version': (SKILL / 'VERSION').read_text().strip(), 'identity': identity,
+    report = {'product': 'editonny', 'version': (SKILL / 'VERSION').read_text(encoding='utf-8').strip(), 'identity': identity,
               'mediaCapabilities': capabilities,
               'ok': all(c['ok'] for c in checks if c['required']), 'checks': checks}
     if probe_media:
@@ -97,7 +97,7 @@ def guide(port, open_browser):
     # Loopback only. Next.js 16.4 treats its locale rewrites as external when bound to 127.0.0.1 and redirects in a loop.
     command = [npm, 'run', 'dev', '-w', '@editonny/web', '--', '--hostname', 'localhost', '--port', str(port)]
     print('editonny · starting the guide · Ctrl+C to stop', flush=True)
-    process = subprocess.Popen(command, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    process = subprocess.Popen(command, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', errors='replace')
     url = None
     try:
         for line in process.stdout:
@@ -270,4 +270,7 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     raise SystemExit(main())

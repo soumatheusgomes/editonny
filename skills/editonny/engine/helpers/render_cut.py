@@ -100,7 +100,7 @@ def warn(msg: str) -> None:
 
 
 def ffmpeg(cmd: list[str], what: str) -> subprocess.CompletedProcess:
-    proc = subprocess.run([str(c) for c in cmd], capture_output=True, text=True)
+    proc = subprocess.run([str(c) for c in cmd], capture_output=True, text=True, encoding='utf-8', errors='replace')
     if proc.returncode != 0:
         raise CutError(f"FFmpeg failed to {what}:\n{(proc.stderr or '').strip()[-1500:]}")
     return proc
@@ -246,7 +246,7 @@ def source_frame_times(src: Path, t: float, before: float = 3.0, after: float = 
     proc = subprocess.run(
         ["ffprobe", "-v", "error", "-select_streams", "v:0", "-read_intervals",
          f'{max(0.0, t - before):.3f}%{t + after:.3f}', "-show_entries", "packet=pts_time",
-         "-of", "csv=p=0", str(src)], capture_output=True, text=True)
+         "-of", "csv=p=0", str(src)], capture_output=True, text=True, encoding='utf-8', errors='replace')
     out = set()
     for line in proc.stdout.splitlines():
         try:
@@ -276,7 +276,7 @@ def nominal_rate(src: Path, info: dict) -> float | None:
     (screen recordings write frames only when the screen changes) that must not drag it down."""
     avg = float(info.get("fps") or 0.0)
     proc = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
-                           "stream=r_frame_rate", "-of", "csv=p=0", str(src)], capture_output=True, text=True)
+                           "stream=r_frame_rate", "-of", "csv=p=0", str(src)], capture_output=True, text=True, encoding='utf-8', errors='replace')
     try:
         r = float(Fraction(proc.stdout.strip().split(",")[0]))
     except (ValueError, ZeroDivisionError):
@@ -400,7 +400,7 @@ def speech_in_window(edit_dir: Path, stem: str, src: Path, info: dict, t0: float
     proc = subprocess.run(
         ["ffmpeg", "-hide_banner", "-nostats", "-nostdin", "-ss", f'{t0:.3f}', "-t", f'{t1 - t0:.3f}',
          "-i", str(src), "-vn", "-af", f'silencedetect=n={noise:g}dB:d=0.08', "-f", "null", "-"],
-        capture_output=True, text=True)
+        capture_output=True, text=True, encoding='utf-8', errors='replace')
     sil = parse_silences(proc.stderr, t0, t1)
     fine, cur = [], t0
     for a, b in sil:
@@ -424,7 +424,7 @@ def channel_mode(src: Path, info: dict) -> str:
     proc = subprocess.run(
         ["ffmpeg", "-hide_banner", "-nostats", "-nostdin", "-t", "120", "-i", str(src), "-vn", "-af",
          "pan=3c|c0=c0|c1=c1|c2=0.5*c0+0.5*c1,astats=metadata=0:measure_perchannel=RMS_level:measure_overall=none",
-         "-f", "null", "-"], capture_output=True, text=True)
+         "-f", "null", "-"], capture_output=True, text=True, encoding='utf-8', errors='replace')
     levels = [float(x) if x not in ("-inf", "inf", "nan") else -120.0
               for x in re.findall(r"RMS level dB: (-?[\w.]+)", proc.stderr)]
     if len(levels) < 3:
@@ -447,7 +447,7 @@ def hwaccel_for(src: Path, info: dict) -> bool:
     if codec not in ("hevc", "h264", "prores"):
         return False
     if codec not in _HWACCEL_CACHE:
-        hw = subprocess.run(["ffmpeg", "-hide_banner", "-hwaccels"], capture_output=True, text=True).stdout
+        hw = subprocess.run(["ffmpeg", "-hide_banner", "-hwaccels"], capture_output=True, text=True, encoding='utf-8', errors='replace').stdout
         ok = "videotoolbox" in hw
         if ok:
             ok = subprocess.run(["ffmpeg", "-v", "error", "-nostdin", "-hwaccel", "videotoolbox", "-i", str(src),
@@ -749,13 +749,13 @@ def build_af(p: Plan, mode: str, samples: int) -> str:
 
 def count_frames(path: Path) -> int:
     proc = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=nb_frames",
-                           "-of", "csv=p=0", str(path)], capture_output=True, text=True)
+                           "-of", "csv=p=0", str(path)], capture_output=True, text=True, encoding='utf-8', errors='replace')
     try:
         return int(proc.stdout.strip().split(",")[0])
     except ValueError:
         proc = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_packets",
                                "-show_entries", "stream=nb_read_packets", "-of", "csv=p=0", str(path)],
-                              capture_output=True, text=True)
+                              capture_output=True, text=True, encoding='utf-8', errors='replace')
         return int(proc.stdout.strip().split(",")[0] or 0)
 
 
@@ -840,7 +840,7 @@ def extract(p: Plan, cfg: dict) -> Plan:
         cmd += ["-map", "0:v:0", "-vf", vf, "-frames:v", str(p.frames), "-an", *enc, "-f", "mp4", str(tmp_v)]
         cmd += ["-map", amap, "-af", af, "-vn", "-c:a", "pcm_f32le", "-ar", str(SR), "-ac", "2",
                 "-f", "wav", str(tmp_a)]
-        return subprocess.run(cmd, capture_output=True, text=True)
+        return subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace')
 
     use_hw = hwaccel_for(p.pic_src, p.pic_info)
     proc = run_extract(use_hw)
@@ -915,7 +915,7 @@ def loudnorm_measure(wav_path: Path, targets: dict | None = None) -> dict | None
     proc = subprocess.run(
         ["ffmpeg", "-hide_banner", "-nostats", "-nostdin", "-i", str(wav_path), "-af",
          f"loudnorm=I={targets['I']}:TP={targets['TP']}:LRA={targets['LRA']}:print_format=json",
-         "-f", "null", "-"], capture_output=True, text=True)
+         "-f", "null", "-"], capture_output=True, text=True, encoding='utf-8', errors='replace')
     text = proc.stderr
     if proc.returncode:
         raise CutError('Loudness measurement failed: ' + text[-300:], 2)
@@ -939,7 +939,7 @@ def true_peak_db(path: Path) -> float | None:
     used by verify_cut, prints 1 decimal and hides a -0.96 as -1.0). -120 for silence."""
     proc = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-nostdin", "-i", str(path), "-vn", "-af",
                            f"loudnorm=I={LOUDNORM['I']}:TP={LOUDNORM['TP']}:LRA={LOUDNORM['LRA']}:print_format=json",
-                           "-f", "null", "-"], capture_output=True, text=True)
+                           "-f", "null", "-"], capture_output=True, text=True, encoding='utf-8', errors='replace')
     m = re.search(r'"input_tp"\s*:\s*"(-?inf|-?[\d.]+)"', proc.stderr or "")
     if not m:
         return None
@@ -951,7 +951,7 @@ def true_peak_db(path: Path) -> float | None:
 
 def acquire_lock(clips_dir: Path):
     """One render per edit dir at a time (clips cache and pruning are shared)."""
-    fh = open(clips_dir / ".render.lock", "a+")
+    fh = open(clips_dir / ".render.lock", "a+", encoding='utf-8')
     try:
         import fcntl
         fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -1319,5 +1319,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     sys.modules.setdefault('render_cut', sys.modules[__name__])
     sys.exit(main())

@@ -1,0 +1,2 @@
+# Checks compare generated files, hashes, and front matter byte for byte, so text stays LF on every platform.
+* text=auto eol=lf

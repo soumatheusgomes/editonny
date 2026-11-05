@@ -41,11 +41,11 @@ def grab_frame(video: Path, t: float) -> Image.Image:
     with tempfile.TemporaryDirectory(prefix="samples-") as tmp:
         out = Path(tmp) / "frame.png"
         cmd = ["ffmpeg", "-v", "error", "-y", "-ss", f'{max(0.0, t):.3f}', "-i", str(video), "-frames:v", "1", str(out)]
-        proc = subprocess.run(cmd, capture_output=True, text=True)
+        proc = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace')
         if proc.returncode != 0 or not out.exists():
             # seeking past the last frame gives nothing: fall back to the first frame
             cmd[5] = "0"
-            proc = subprocess.run(cmd, capture_output=True, text=True)
+            proc = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace')
         if not out.exists():
             raise RuntimeError(f'could not extract a frame from {video}: {proc.stderr[-400:]}')
         with Image.open(out) as im:
@@ -241,4 +241,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     sys.exit(main())

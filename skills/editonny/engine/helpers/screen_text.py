@@ -81,7 +81,7 @@ def extract_frames(video: Path, destination: Path, fps: float, width_value: int 
 def _read_vision(binary: Path, directory: Path) -> dict[str, list[dict]]:
     output_value = directory / "ocr.json"
     run([str(binary), str(directory), str(output_value)])
-    return json.loads(output_value.read_text())
+    return json.loads(output_value.read_text(encoding='utf-8'))
 
 
 def _read_heuristic(directory: Path) -> dict[str, list[dict]]:

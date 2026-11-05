@@ -83,7 +83,7 @@ def short_hash(obj) -> str:
 
 def ffmpeg_cmd(args: list, what: str) -> subprocess.CompletedProcess:
     proc = subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", *[str(a) for a in args]],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, encoding='utf-8', errors='replace')
     if proc.returncode != 0:
         tail = "\n".join((proc.stderr or "").strip().splitlines()[-12:])
         raise ComposeError(f'FFmpeg failed to {what}:\n{tail}')
@@ -96,7 +96,7 @@ _FF_MAJOR: int | None = None
 def ffmpeg_major() -> int:
     global _FF_MAJOR
     if _FF_MAJOR is None:
-        out = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True).stdout
+        out = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True, encoding='utf-8', errors='replace').stdout
         m = re.search(r"ffmpeg version n?(\d+)", out)
         _FF_MAJOR = int(m.group(1)) if m else 7
     return _FF_MAJOR
@@ -230,7 +230,7 @@ def _base_facts(base: Path) -> dict:
     if nb <= 0:
         proc = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_packets",
                                "-show_entries", "stream=nb_read_packets", "-of", "csv=p=0", str(base)],
-                              capture_output=True, text=True)
+                              capture_output=True, text=True, encoding='utf-8', errors='replace')
         try:
             nb = int(proc.stdout.strip().split(",")[0])
         except ValueError:
@@ -797,7 +797,7 @@ def heic_to_jpg(plan: Plan, src: Path, i: int, where: str | None = None) -> Path
         return out
     tmp = out.with_name(".tmp-" + out.name)
     proc = subprocess.run([sips, "-s", "format", "jpeg", "-s", "formatOptions", "93", str(src), "--out", str(tmp)],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, encoding='utf-8', errors='replace')
     if proc.returncode != 0 or not tmp.exists():
         raise ComposeError(f'could not convert HEIC photo {where} ({src.name}) to JPG. Export the photo as JPG and use the .jpg file', 2)
     os.replace(tmp, out)
@@ -2955,7 +2955,7 @@ def run_video(plan: Plan, inserts: list[Insert], tracks: dict, cam: str | None, 
 def loudnorm_measure(path: Path, extra: list[str] | None = None, i=-14.0, tp=-1.0, lra=11.0) -> dict | None:
     proc = subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-v", "info", *(extra or []), "-i", str(path),
                            "-vn", "-af", f'loudnorm=I={i}:TP={tp}:LRA={lra}:print_format=json', "-f", "null", "-"],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, encoding='utf-8', errors='replace')
     m = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", proc.stderr or "", re.S)
     if proc.returncode or not m:
         return None
@@ -3513,4 +3513,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     sys.exit(main())

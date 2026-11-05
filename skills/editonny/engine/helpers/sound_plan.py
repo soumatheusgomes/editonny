@@ -180,7 +180,7 @@ def kit_index() -> dict:
     if not p.exists():
         return {}
     try:
-        return json.loads(p.read_text())
+        return json.loads(p.read_text(encoding='utf-8'))
     except Exception:
         return {}
 
@@ -190,7 +190,7 @@ def library_index() -> dict:
     if not p.exists():
         return {}
     try:
-        return json.loads(p.read_text()).get("effects", {})
+        return json.loads(p.read_text(encoding='utf-8')).get("effects", {})
     except Exception:
         return {}
 
@@ -274,7 +274,7 @@ def measure_value(p: Path) -> dict:
         return _MEASUREMENTS[key]
     info = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries",
                            "stream=sample_rate,channels", "-of", "csv=p=0", str(p)],
-                          capture_output=True, text=True).stdout.strip().split(",")
+                          capture_output=True, text=True, encoding='utf-8', errors='replace').stdout.strip().split(",")
     if len(info) < 2 or not info[0]:
         error_value(f'could not read sound {p}')
     sr, ch = int(info[0]), int(info[1])
@@ -330,7 +330,7 @@ def anchor_curated(p: Path):
 
 def media_duration(p: str) -> float:
     out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", p],
-                         capture_output=True, text=True).stdout.strip()
+                         capture_output=True, text=True, encoding='utf-8', errors='replace').stdout.strip()
     try:
         return float(out)
     except ValueError:
@@ -340,7 +340,7 @@ def media_duration(p: str) -> float:
 def loudness(p: str, af: str = "") -> dict:
     process = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", p, "-vn", "-af",
                         af + "loudnorm=I=-14:TP=-1:LRA=11:print_format=json", "-f", "null", "-"],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding='utf-8', errors='replace')
     if process.returncode:
         error_value(f'could not measure loudness of {p}')
     r = process.stderr
@@ -371,7 +371,7 @@ def finalize(video: str, wav: str, output_value: str) -> tuple[dict, str, dict]:
         af, j = chain_loudnorm(wav, tp=tp)
         r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-y", "-i", video, "-i", wav, "-map", "0:v:0",
                             "-map", "1:a:0", "-c:v", "copy", "-af", af, "-c:a", "aac", "-b:a", "256k",
-                            "-movflags", "+faststart", output_value], capture_output=True, text=True)
+                            "-movflags", "+faststart", output_value], capture_output=True, text=True, encoding='utf-8', errors='replace')
         if r.returncode:
             error_value('FFmpeg failed to write the final video:' + r.stderr[-1500:])
         type_value = "linear"
@@ -594,7 +594,7 @@ def audit_peaks(plan_value: dict, dur: float) -> dict:
 
 def video_duration(p: str) -> float:
     out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=duration",
-                          "-of", "csv=p=0", p], capture_output=True, text=True).stdout.strip()
+                          "-of", "csv=p=0", p], capture_output=True, text=True, encoding='utf-8', errors='replace').stdout.strip()
     try:
         return float(out)
     except ValueError:
@@ -820,7 +820,7 @@ def main(argv=None):
         output_value = proj["file"].parent / "sound_plan.json"
     else:
         output_value = files_value[0].resolve().parent / "sound_plan.json"
-    output_value.write_text(json.dumps(plan_value, ensure_ascii=False, indent=1))
+    output_value.write_text(json.dumps(plan_value, ensure_ascii=False, indent=1), encoding='utf-8')
     maximum_value = 'one per animation' if a.mode_value == "visuals" and a.max is None else str(plan_value["max_sounds"])
     print(f"{len(plan_value['sounds'])} sounds planned, {len(plan_value['discarded'])} discarded (mode {plan_value['mode']}, maximum {maximum_value}, spacing {plan_value['min_spacing_s']} s)")
     if adjustment:
@@ -850,4 +850,7 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     main()

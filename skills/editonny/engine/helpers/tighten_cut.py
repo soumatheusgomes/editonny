@@ -48,7 +48,7 @@ def probe_value(p: str) -> dict:
     r = subprocess.run(["ffprobe", "-v", "error", "-show_entries",
                         "stream=index,codec_type,r_frame_rate,avg_frame_rate,width,height,duration,start_time,"
                         "sample_rate,channels,nb_frames,color_space,color_primaries,color_transfer,color_range"
-                        ":format=duration", "-of", "json", p], capture_output=True, text=True)
+                        ":format=duration", "-of", "json", p], capture_output=True, text=True, encoding='utf-8', errors='replace')
     if r.returncode:
         error_value(f'Could not open {p}')
     d = json.loads(r.stdout)
@@ -115,7 +115,7 @@ def activity(p: str, w: int, h: int, store_value: bool = False):
 def load_sfx(p: str) -> list:
     "Protected intervals from each sound's attack through its peak plus 0.1 seconds."
     try:
-        d = json.loads(Path(p).read_text())
+        d = json.loads(Path(p).read_text(encoding='utf-8'))
     except (OSError, json.JSONDecodeError) as e:
         error_value(f'could not read sound plan {p}: {e}')
     items_value = d.get("sounds", d.get("events", [])) if isinstance(d, dict) else d
@@ -159,7 +159,7 @@ def lag_ms(a: "np.ndarray", b: "np.ndarray", t_a: float, t_b: float, middle: flo
 def loudness(p: str, af: str = "") -> dict:
     r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", p, "-vn", "-af",
                         af + "loudnorm=I=-14:TP=-1:LRA=11:print_format=json", "-f", "null", "-"],
-                       capture_output=True, text=True).stderr
+                       capture_output=True, text=True, encoding='utf-8', errors='replace').stderr
     try:
         return json.loads(r[r.rindex("{"): r.rindex("}") + 1])
     except ValueError:
@@ -185,7 +185,7 @@ def finalize(video: str, wav: str, output_value: str) -> tuple[dict, str, dict]:
         af, j = chain_loudnorm(wav, tp=tp)
         r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-y", "-i", video, "-i", wav, "-map", "0:v:0",
                             "-map", "1:a:0", "-c:v", "copy", "-af", af, "-c:a", "aac", "-b:a", "256k",
-                            "-movflags", "+faststart", output_value], capture_output=True, text=True)
+                            "-movflags", "+faststart", output_value], capture_output=True, text=True, encoding='utf-8', errors='replace')
         if r.returncode:
             error_value('FFmpeg failed to write the final video:' + r.stderr[-1500:])
         type_value = "linear"
@@ -330,7 +330,7 @@ def render_output(a, info: dict, plan_value: dict, output_value: str, td: str) -
     sel = "+".join(f'between(n\\,{k0}\\,{k1 - 1})' for k0, k1 in retain)
     vf = f'select={sel},setpts=N*{den}/{num}/TB'
     script = os.path.join(td, "vf.txt")
-    Path(script).write_text(vf)
+    Path(script).write_text(vf, encoding='utf-8')
     v_tmp = os.path.join(td, "video.mp4")
     extra = []
     v = info["v"]
@@ -528,7 +528,7 @@ def main(argv=None):
                time_map=map_time(plan_value["retain_q"], fd))
     rel_path = (output_value + ".cut.json")
     if a.only_plan:
-        Path(rel_path).write_text(json.dumps(rel, ensure_ascii=False, indent=1))
+        Path(rel_path).write_text(json.dumps(rel, ensure_ascii=False, indent=1), encoding='utf-8')
         print(f'plan saved at {rel_path} (nothing rendered)')
         return
     with tempfile.TemporaryDirectory() as td:
@@ -536,7 +536,7 @@ def main(argv=None):
     conf = audit(a, info, plan_value, output_value, mini, plan_value["thresholdDb"], r['original_volume'])
     rel["verification"] = conf
     rel['volume_adjustment'] = r["adjustment"]
-    Path(rel_path).write_text(json.dumps(rel, ensure_ascii=False, indent=1))
+    Path(rel_path).write_text(json.dumps(rel, ensure_ascii=False, indent=1), encoding='utf-8')
     print(f'output: {output_value}')
     print(f"  video duration {conf['video_duration']:.3f} seconds, audio {conf['audio_duration']:.3f} s (expected {conf['expected_duration']:.3f}) · volume {conf['final_lufs']} LUFS, peak {conf['final_peak_dbtp']} dBTP (adjustment {r['adjustment']})")
     if "checked_frames" in conf:
@@ -561,4 +561,7 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     main()

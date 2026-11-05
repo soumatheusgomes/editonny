@@ -15,7 +15,7 @@ from media_policy import encoder_args, frame_tags
 def frame_times(path: Path) -> list[float]:
     result = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_frames',
         '-show_entries', 'frame=best_effort_timestamp:stream=time_base', '-of', 'json', str(path)],
-        capture_output=True, text=True, check=True, timeout=600)
+        capture_output=True, text=True, check=True, timeout=600, encoding='utf-8', errors='replace')
     data = json.loads(result.stdout)
     time_base = Fraction(data['streams'][0]['time_base'])
     times = [float(int(f['best_effort_timestamp']) * time_base) for f in data['frames']]
@@ -86,7 +86,7 @@ def render_vfr(edl: dict, edit: Path, probes: dict, contract: dict | None, media
             chains.append(''.join(labels) + f'concat=n={len(labels)}:v=0:a=1[a]')
         with tempfile.TemporaryDirectory(prefix='vfr-', dir=clips) as tmp:
             tmp = Path(tmp)
-            script = tmp / 'graph.txt'; script.write_text(';\n'.join(chains))
+            script = tmp / 'graph.txt'; script.write_text(';\n'.join(chains), encoding='utf-8')
             video, audio = tmp / 'picture.mp4', tmp / 'voice.wav'
             lines = ['ffconcat version 1.0']
             for index, (source, chain, duration, last_duration, count) in enumerate(pictures):
@@ -97,11 +97,11 @@ def render_vfr(edl: dict, edit: Path, probes: dict, contract: dict | None, media
                     '-bsf:v', f'setts=duration=if(eq(N\\,{count - 1})\\,{last_duration:.6f}/TB\\,DURATION)', '-an', str(clip)],
                     'encode selected VFR frames without resampling')
                 lines += [f"file 'clip-{index}.mp4'", f'duration {duration:.6f}']
-            listing = tmp / 'picture.ffconcat'; listing.write_text('\n'.join(lines) + '\n')
+            listing = tmp / 'picture.ffconcat'; listing.write_text('\n'.join(lines) + '\n', encoding='utf-8')
             ffmpeg(['ffmpeg', '-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', str(listing),
                     '-map', '0:v', '-c:v', 'copy', '-video_track_timescale', '1000000', str(video)], 'join VFR timestamps')
             if has_audio:
-                ffmpeg(['ffmpeg', '-y', '-v', 'error', *args, '-filter_complex', script.read_text(),
+                ffmpeg(['ffmpeg', '-y', '-v', 'error', *args, '-filter_complex', script.read_text(encoding='utf-8'),
                         '-map', '[a]', '-c:a', 'pcm_f32le', str(audio)], 'join VFR audio intervals')
             policy = contract['workflow']['audio'] if contract else {'mode': 'normalize', 'targetLufs': -14, 'processingPeak': -1.5, 'truePeakLimit': -1}
             normalize = has_audio and policy['mode'] == 'normalize'

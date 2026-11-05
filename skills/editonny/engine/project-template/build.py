@@ -2808,7 +2808,7 @@ def measure_sound(path):
     key = f'{path}|{st.st_size}|{int(st.st_mtime)}|v2'
     if key in cache:
         return tuple(cache[key])
-    info = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'a:0', '-show_entries', 'stream=sample_rate,channels', '-of', 'csv=p=0', path], capture_output=True, text=True).stdout.strip().split(',')
+    info = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'a:0', '-show_entries', 'stream=sample_rate,channels', '-of', 'csv=p=0', path], capture_output=True, text=True, encoding='utf-8', errors='replace').stdout.strip().split(',')
     try:
         (sr, ch) = (int(info[0]), int(info[1]))
     except (ValueError, IndexError):
@@ -3168,7 +3168,7 @@ def signature_file(p):
     return value.hexdigest()
 
 def ffprobe_value(p, entries, stream='v:0'):
-    r = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', stream, '-show_entries', entries, '-of', 'csv=p=0', p], capture_output=True, text=True)
+    r = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', stream, '-show_entries', entries, '-of', 'csv=p=0', p], capture_output=True, text=True, encoding='utf-8', errors='replace')
     return r.stdout.strip().split('\n')[0].split(',') if r.returncode == 0 else []
 
 def size_media(p):
@@ -3207,7 +3207,7 @@ def resize_image(rel, w, h, fit='contain'):
     return dst_rel
 
 def duration_media(p):
-    r = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', p], capture_output=True, text=True)
+    r = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', p], capture_output=True, text=True, encoding='utf-8', errors='replace')
     try:
         return float(r.stdout.strip())
     except ValueError:
@@ -3221,7 +3221,7 @@ def count_frames(p):
         return None
 
 def run_ffmpeg(cmd, what):
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace')
     if r.returncode != 0:
         raise BuildError(f'FFmpeg failed to {what}: ' + (r.stderr or '').strip()[-500:])
 
@@ -3508,7 +3508,7 @@ def check_node(npx):
     if not node:
         return
     try:
-        v = subprocess.run([node, '--version'], capture_output=True, text=True, timeout=20).stdout.strip()
+        v = subprocess.run([node, '--version'], capture_output=True, text=True, timeout=20, encoding='utf-8', errors='replace').stdout.strip()
     except (OSError, subprocess.SubprocessError):
         return
     m = re.match('v(\\d+)', v)
@@ -3723,7 +3723,7 @@ def preserve_audio(output, cut):
     with tempfile.TemporaryDirectory(prefix='preserve-audio-', dir=output.parent) as temporary:
         remuxed = Path(temporary) / 'candidate.mp4'
         process = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(output), '-i', str(cut), '-map', '0:v:0', '-map', '1:a?',
-            '-c', 'copy', '-t', str(length), '-movflags', '+faststart', str(remuxed)], capture_output=True, text=True)
+            '-c', 'copy', '-t', str(length), '-movflags', '+faststart', str(remuxed)], capture_output=True, text=True, encoding='utf-8', errors='replace')
         if process.returncode:
             raise BuildError('Could not preserve source audio: ' + process.stderr[-300:])
         os.replace(remuxed, output)
@@ -4035,4 +4035,7 @@ def _main(argv):
         print(f'error: {e}', file=sys.stderr)
         return 2
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     sys.exit(main(sys.argv[1:]))

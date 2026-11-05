@@ -41,6 +41,15 @@ export function useLibraryState(itemParam: 'scene' | 'example', categories: stri
   const pendingSearch = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   // A navigation that replaced the search (header link, Back) cancels a search the visitor was still typing.
   useEffect(() => () => clearTimeout(pendingSearch.current), [externalChanges]);
+  // A link reaches the URL only after the server answers, so on a slow response the pending search would fire first
+  // and replace the destination. Any link click therefore cancels it; opening an item carries the search itself.
+  useEffect(() => {
+    const cancel = (event: MouseEvent) => {
+      if (event.target instanceof Element && event.target.closest('a[href]')) clearTimeout(pendingSearch.current);
+    };
+    document.addEventListener('click', cancel, true);
+    return () => document.removeEventListener('click', cancel, true);
+  }, []);
   const openedHere = useRef(false);
   const rawCategory = params.get('category') ?? '';
   const rawId = params.get(itemParam);

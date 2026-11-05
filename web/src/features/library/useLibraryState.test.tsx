@@ -29,4 +29,16 @@ describe('useLibraryState', () => {
     expect(push).toHaveBeenCalledWith({ pathname: '/catalog', query: { q: 'fade', scene: 'fade' } }, { scroll: false });
     expect(replace).not.toHaveBeenCalled();
   });
+
+  it('drops a search still being typed when a link starts a navigation that has not committed', () => {
+    const { result } = renderHook(() => useLibraryState('scene', [], []));
+    const link = document.body.appendChild(document.createElement('a'));
+    link.href = '/en/catalog';
+    link.addEventListener('click', event => event.preventDefault());
+    act(() => result.current.setQuery('new search'));
+    act(() => link.click());
+    act(() => { vi.advanceTimersByTime(300); });
+    expect(replace).not.toHaveBeenCalled();
+    link.remove();
+  });
 });

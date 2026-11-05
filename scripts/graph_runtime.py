@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 
 VERSION = '0.9.91'
@@ -29,6 +31,15 @@ def write_json(path, data):
     temporary.replace(path)
 
 
+def is_link(path):
+    """Symlink or Windows directory junction: both redirect a path, so the corpus refuses them alike."""
+    try:
+        info = os.lstat(path)
+    except OSError:
+        return False
+    return stat.S_ISLNK(info.st_mode) or getattr(info, 'st_reparse_tag', 0) == stat.IO_REPARSE_TAG_MOUNT_POINT
+
+
 def source_path(value, root):
     root = Path(root).resolve()
     path = Path(value)
@@ -38,7 +49,7 @@ def source_path(value, root):
     relative = path.relative_to(root)
     if any(part in SENSITIVE or part.startswith('.env') for part in relative.parts):
         raise ValueError('Private source refused')
-    if any(parent.is_symlink() for parent in [path, *path.parents] if parent != root and parent.is_relative_to(root)):
+    if any(is_link(parent) for parent in [path, *path.parents] if parent != root and parent.is_relative_to(root)):
         raise ValueError('Symlink source refused')
     if not path.is_file():
         raise ValueError('Source missing')
@@ -150,7 +161,7 @@ def interpreter():
     executable = shutil.which('graphify')
     if not executable:
         raise ValueError('Install graphifyy[mcp,svg,watch]==0.9.91 using uv tool')
-    first = Path(executable).read_text().splitlines()[0]
+    first = Path(executable).read_text(encoding='utf-8').splitlines()[0]
     python = first.removeprefix('#!')
     if not first.startswith('#!') or not Path(python).is_file():
         raise ValueError('Cannot resolve the Graphify interpreter from its executable')
@@ -327,8 +338,8 @@ def run_update(root, semantic=True):
         raise ValueError('Memories changed during copy; previous index preserved')
     save_manifest(detection['files'], str(stage / 'manifest.json'), kind='both' if semantic else 'ast',
                   root=root, scan_corpus=files)
-    commit = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=root, capture_output=True, text=True)
-    dirty = subprocess.run(['git', 'status', '--porcelain'], cwd=root, capture_output=True, text=True)
+    commit = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=root, capture_output=True, text=True, encoding='utf-8', errors='replace')
+    dirty = subprocess.run(['git', 'status', '--porcelain'], cwd=root, capture_output=True, text=True, encoding='utf-8', errors='replace')
     write_json(stage / 'run.json', {'snapshot': current, 'complete_semantic': semantic and not uncached,
                'pending_semantic': uncached, 'version': VERSION, 'prompt_sha256': prompt_sha256, 'provenance': PROVENANCE if nodes else None,
                'tokens': None, 'tokens_note': 'Native counters are not exposed by the delegation tool.',

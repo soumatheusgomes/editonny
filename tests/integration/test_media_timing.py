@@ -31,7 +31,7 @@ class MediaTimingTests(unittest.TestCase):
                         c['workflow']['editing']['protectedIntervals'] = [{'sourceId': source_id, 'start': .1, 'end': .2}]
                     project = create_workspace(root / 'downloads', scope, manifest, c, confirmation(c, manifest))
                     edl = {'sources': {'s': str(source)}, 'ranges': [{'id': 'a', 'source': 's', 'start': .1, 'end': .8}]}
-                    (project.parent / 'edit/edl.json').write_text(json.dumps(edl))
+                    (project.parent / 'edit/edl.json').write_text(json.dumps(edl), encoding='utf-8')
                     if scope == 'intervals':
                         project = revise_workspace(project, {'workflow': {'editing': {'intervals': [
                             {'sourceId': source_id, 'start': .6, 'end': .7}]}}}, 'intervals')
@@ -40,8 +40,8 @@ class MediaTimingTests(unittest.TestCase):
                         record_confirmation(project, accepted)
                         c = changed
                     edl['contractHash'] = settings_hash(c)
-                    path = project.parent / 'edit/edl.json'; path.write_text(json.dumps(edl))
-                    result = subprocess.run([sys.executable, str(HELPERS / 'render_cut.py'), str(path)], capture_output=True, text=True)
+                    path = project.parent / 'edit/edl.json'; path.write_text(json.dumps(edl), encoding='utf-8')
+                    result = subprocess.run([sys.executable, str(HELPERS / 'render_cut.py'), str(path)], capture_output=True, text=True, encoding='utf-8', errors='replace')
                     self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
                     self.assertRegex(result.stderr, 'protected|scope')
                     self.assertFalse((path.parent / 'cut.mp4').exists())
@@ -59,8 +59,8 @@ class MediaTimingTests(unittest.TestCase):
             self.assertEqual(facts['fps_str'], facts['nominal_fps_str'])
             self.assertEqual(propose_settings(observed, {})['config']['workflow']['video']['timing'], 'vfr')
             edl = edit / 'edl.json'
-            edl.write_text(json.dumps({'sources': {'s': str(source)}, 'ranges': [{'id': 'a', 'source': 's', 'start': 0, 'end': 2}]}))
-            result = subprocess.run([sys.executable, str(HELPERS / 'render_cut.py'), str(edl), '--no-jcut'], capture_output=True, text=True)
+            edl.write_text(json.dumps({'sources': {'s': str(source)}, 'ranges': [{'id': 'a', 'source': 's', 'start': 0, 'end': 2}]}), encoding='utf-8')
+            result = subprocess.run([sys.executable, str(HELPERS / 'render_cut.py'), str(edl), '--no-jcut'], capture_output=True, text=True, encoding='utf-8', errors='replace')
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertTrue(all(abs(a - b) <= 1e-6 for a, b in zip(frame_times(source), frame_times(edit / 'cut.mp4'))))
 
@@ -74,12 +74,12 @@ class MediaTimingTests(unittest.TestCase):
             edl = edit / 'edl.json'
             edl.write_text(json.dumps({'jcut': False, 'sources': {'s': str(source)}, 'ranges': [
                 {'id': 'a', 'source': 's', 'start': 0, 'end': 0.4},
-                {'id': 'b', 'source': 's', 'start': 0.5, 'end': 0.9}]}))
-            result = subprocess.run([sys.executable, str(HELPERS / 'render_cut.py'), str(edl), '--no-jcut'], capture_output=True, text=True)
+                {'id': 'b', 'source': 's', 'start': 0.5, 'end': 0.9}]}), encoding='utf-8')
+            result = subprocess.run([sys.executable, str(HELPERS / 'render_cut.py'), str(edl), '--no-jcut'], capture_output=True, text=True, encoding='utf-8', errors='replace')
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             def timestamps(path):
                 data = json.loads(subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_frames',
-                    '-show_entries', 'frame=best_effort_timestamp_time', '-of', 'json', str(path)], capture_output=True, text=True, check=True).stdout)
+                    '-show_entries', 'frame=best_effort_timestamp_time', '-of', 'json', str(path)], capture_output=True, text=True, check=True, encoding='utf-8', errors='replace').stdout)
                 return [float(f['best_effort_timestamp_time']) for f in data['frames']]
             original = timestamps(source)
             output = timestamps(edit / 'cut.mp4')
@@ -102,8 +102,8 @@ class MediaTimingTests(unittest.TestCase):
                             '-color_range', 'tv', '-colorspace', 'bt709', '-color_trc', 'bt709',
                             '-color_primaries', 'bt709', str(source)], check=True)
             edl = edit / 'edl.json'
-            edl.write_text(json.dumps({'sources': {'s': str(source)}, 'ranges': [{'id': 'a', 'source': 's', 'start': 0, 'end': 1}]}))
-            result = subprocess.run([sys.executable, str(HELPERS / 'render_cut.py'), str(edl), '--no-jcut'], capture_output=True, text=True)
+            edl.write_text(json.dumps({'sources': {'s': str(source)}, 'ranges': [{'id': 'a', 'source': 's', 'start': 0, 'end': 1}]}), encoding='utf-8')
+            result = subprocess.run([sys.executable, str(HELPERS / 'render_cut.py'), str(edl), '--no-jcut'], capture_output=True, text=True, encoding='utf-8', errors='replace')
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             facts = probe_video(edit / 'cut.mp4')
             self.assertEqual(Fraction(facts['fps_str']), Fraction(30000, 1001))
@@ -121,7 +121,7 @@ class MediaTimingTests(unittest.TestCase):
             subprocess.run(['ffmpeg', '-v', 'error', '-i', str(exact), '-c', 'copy', '-bsf:v', f'setts=pts=PTS+{jitter}:dts=DTS+{jitter}',
                 '-video_track_timescale', '263400', str(render)], check=True)
             b_frames = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=has_b_frames',
-                '-of', 'csv=p=0', str(render)], capture_output=True, text=True, check=True).stdout.strip()
+                '-of', 'csv=p=0', str(render)], capture_output=True, text=True, check=True, encoding='utf-8', errors='replace').stdout.strip()
             self.assertNotEqual(b_frames, '0')
             self.assertNotEqual(Fraction(probe_video(render)['fps_str']), Fraction(rate))
             restamp_cfr(render, rate)

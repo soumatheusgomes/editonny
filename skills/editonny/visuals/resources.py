@@ -2,17 +2,17 @@
 import hashlib
 from pathlib import Path
 import re
-from media import VIDEO_EXTENSIONS, media_path, copy_new, manifest, verify
+from media import VIDEO_EXTENSIONS, is_link, media_path, copy_new, manifest, verify
 
 
 def _files(origin: Path, root: Path):
     current = origin
     while current != root:
-        if current.is_symlink():
+        if is_link(current):
             raise ValueError(f'Resources must not be symlinks: {current}')
         current = current.parent
     for file in sorted(origin.rglob('*')):
-        if file.is_symlink():
+        if is_link(file):
             raise ValueError(f'Resources must not be symlinks: {file}')
         if file.is_file() and not any(p.startswith('.') for p in file.relative_to(origin).parts):
             yield file
@@ -23,11 +23,11 @@ def _copy(pairs, project: Path, videos=None) -> int:
     pairs = list(pairs)
     # Validate every destination before copying, including symlinked directories.
     for origin, destination in pairs:
-        if origin.is_symlink() or not destination.resolve().is_relative_to(root):
+        if is_link(origin) or not destination.resolve().is_relative_to(root):
             raise ValueError(f'Resource is outside the project or is a symlink: {destination}')
         current = destination
         while True:
-            if current.is_symlink():
+            if is_link(current):
                 raise ValueError(f'Destination must not be a symlink: {current}')
             if current.exists() and not (current.is_file() if current == destination else current.is_dir()):
                 raise ValueError(f'Invalid resource destination type: {current}')

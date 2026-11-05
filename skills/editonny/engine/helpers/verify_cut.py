@@ -116,7 +116,7 @@ def weighted_median(values: list[float], weights: list[float]) -> float:
 
 
 def ffmpeg_stderr(cmd: list[str]) -> str:
-    return subprocess.run(cmd, capture_output=True, text=True).stderr
+    return subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace').stderr
 
 
 def fmt_db(value: float | None) -> str:
@@ -145,7 +145,7 @@ def black_frames(video: Path) -> tuple[list[dict], int]:
     """Black intervals and the number of frames that really decode (full decode pass)."""
     proc = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-nostdin", "-i", str(video), "-an",
                            "-vf", "scale=180:-2,blackdetect=d=0.08:pic_th=0.97:pix_th=0.10",
-                           "-progress", "pipe:1", "-f", "null", "-"], capture_output=True, text=True)
+                           "-progress", "pipe:1", "-f", "null", "-"], capture_output=True, text=True, encoding='utf-8', errors='replace')
     out = []
     for m in re.finditer(r"black_start:(-?[\d.]+) black_end:(-?[\d.]+) black_duration:([\d.]+)", proc.stderr):
         out.append({"start": float(m.group(1)), "end": float(m.group(2)), "duration": float(m.group(3))})
@@ -355,7 +355,7 @@ def verify(edl_path: Path, video: Path, min_silence: float) -> tuple[dict, list[
     fps = float((timeline or {}).get("fps") or info.get("fps") or 30)
     streams = json.loads(subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,duration,nb_frames", "-of", "json", str(video)],
-        capture_output=True, text=True).stdout or "{}").get("streams", [])
+        capture_output=True, text=True, encoding='utf-8', errors='replace').stdout or "{}").get("streams", [])
     v_dur = next((float(s.get("duration") or 0) for s in streams if s.get("codec_type") == "video"), info["duration"])
     a_dur = next((float(s.get("duration") or 0) for s in streams if s.get("codec_type") == "audio"), None)
     v_frames = next((int(s.get("nb_frames") or 0) for s in streams if s.get("codec_type") == "video"), 0)
@@ -819,4 +819,7 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     sys.exit(main())

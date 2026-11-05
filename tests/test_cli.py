@@ -16,7 +16,7 @@ CLI = ROOT / 'editonny.py'
 class CLITests(unittest.TestCase):
     def run_cli(self, *args):
         return subprocess.run([sys.executable, str(CLI), *args], cwd=tempfile.gettempdir(),
-                              text=True, capture_output=True)
+                              text=True, capture_output=True, encoding='utf-8', errors='replace')
 
     def test_catalog_accent_insensitive_and_json(self):
         result = self.run_cli('catalog', 'transitions', '--json')
@@ -60,7 +60,7 @@ class CLITests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'standalone skill'):
                 module.guide(4321, False)
             (root / 'web').mkdir()
-            (root / 'web/package.json').write_text('{}')
+            (root / 'web/package.json').write_text('{}', encoding='utf-8')
             with self.assertRaisesRegex(ValueError, 'npm ci'):
                 module.guide(4321, False)
             (root / 'node_modules/next').mkdir(parents=True)

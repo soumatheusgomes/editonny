@@ -115,4 +115,7 @@ def main():
     p.wait()
     print(f'ok {a.output}: {n} frames ({dur:.2f} s), {a.side}x{a.side}')
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     main()

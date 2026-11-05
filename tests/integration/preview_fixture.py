@@ -37,10 +37,10 @@ def running_preview(video=False):
             os.utime(edit / 'final.mp4', (clip.stat().st_mtime, clip.stat().st_mtime))
             state = {'phase': 'cut', 'project': 'Local test', 'cut_video': 'cut.mp4',
                      'final_video': 'final.mp4', 'awaiting': 'approval_cut'}
-            (edit / 'state.json').write_text(json.dumps(state))
+            (edit / 'state.json').write_text(json.dumps(state), encoding='utf-8')
             timeline = {'fps': 30, 'duration': 3, 'segments': [
                 {'id': 's1', 'out_start': 0, 'out_end': 3, 'beat': 'Opening', 'quote': 'Test video'}]}
-            (edit / 'cut_timeline.json').write_text(json.dumps(timeline))
+            (edit / 'cut_timeline.json').write_text(json.dumps(timeline), encoding='utf-8')
             session = preview.Session(edit, preview.STYLE_CATALOG_PATH, '127.0.0.1', 0)
             handler = type('FixtureHandler', (preview.Handler,), {'session': session})
             server = preview.ThreadingHTTPServer(('127.0.0.1', 0), handler)
@@ -60,7 +60,24 @@ def running_preview(video=False):
                 os.environ['EDITONNY_MUSIC_LIBRARY'] = previous
 
 
+def wait_for_stdin_close():
+    """Return when the caller closes stdin. Windows serializes synchronous pipe I/O, so a pending read
+    blocks DLL loads that inspect the standard handles (the first numpy import hangs); poll there instead."""
+    if os.name != 'nt':
+        sys.stdin.read()
+        return
+    import _winapi
+    import msvcrt
+    handle = msvcrt.get_osfhandle(sys.stdin.fileno())
+    while True:
+        try:
+            _winapi.PeekNamedPipe(handle, 0)
+        except OSError:
+            return
+        time.sleep(0.2)
+
+
 if __name__ == '__main__':
     with running_preview(video=True) as (session, url):
         print(json.dumps({'url': url, 'edit': str(session.edit_dir)}), flush=True)
-        sys.stdin.read()
+        wait_for_stdin_close()

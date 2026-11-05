@@ -23,8 +23,8 @@ class NativeContractTests(unittest.TestCase):
             edit = project.parent / 'edit'
             (edit / 'cut.mp4').write_bytes(source.read_bytes())
             (edit / 'cut_timeline.json').write_text(json.dumps({'fps': 24, 'fps_str': '24', 'duration': 1 / 24,
-                'width': 128, 'height': 64, 'segments': [{'out_start': 0}]}))
-            (edit / 'transcripts/cut.json').write_text(json.dumps({'words': [{'text': 'Hello', 'start': 0, 'end': 0.04}]}))
+                'width': 128, 'height': 64, 'segments': [{'out_start': 0}]}), encoding='utf-8')
+            (edit / 'transcripts/cut.json').write_text(json.dumps({'words': [{'text': 'Hello', 'start': 0, 'end': 0.04}]}), encoding='utf-8')
             spec = importlib.util.spec_from_file_location('native_contract_build', project / 'build.py')
             module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
             p = module.Project()

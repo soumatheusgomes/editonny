@@ -6,10 +6,20 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import stat
 import sys
 import tempfile
 
 VIDEO_EXTENSIONS = {'.mp4', '.webm', '.mov', '.mkv', '.avi', '.m4v'}
+
+
+def is_link(path) -> bool:
+    """Symlink or Windows directory junction: both redirect a path, so containment checks treat them alike."""
+    try:
+        info = os.lstat(path)
+    except OSError:
+        return False
+    return stat.S_ISLNK(info.st_mode) or getattr(info, 'st_reparse_tag', 0) == stat.IO_REPARSE_TAG_MOUNT_POINT
 
 
 def media_path(root: Path, relative: str) -> Path:
@@ -19,7 +29,7 @@ def media_path(root: Path, relative: str) -> Path:
     current = Path(root).expanduser().absolute()
     for part in ('', *PurePosixPath(relative).parts):
         current = current / part
-        if current.is_symlink():
+        if is_link(current):
             raise ValueError(f'Media must not be a symlink: {current}')
     return current
 
@@ -137,4 +147,7 @@ def main():
 
 
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     raise SystemExit(main())

@@ -20,7 +20,7 @@ def main():
         import mediapipe as mp
     except ImportError:
         sys.exit('error: MediaPipe missing. Run: uv run --no-project --python 3.11 --with "mediapipe==0.10.14" --with "numpy<2" --with opencv-python-headless python clean_plate.py ...')
-    pr = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', a.video], capture_output=True, text=True)
+    pr = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', a.video], capture_output=True, text=True, encoding='utf-8', errors='replace')
     if pr.returncode != 0:
         sys.exit(f'error: could not read {a.video}')
     (W, H) = map(int, pr.stdout.strip().split(','))
@@ -62,4 +62,7 @@ def main():
             sys.exit(f'error: could not write {path}')
     print(f'ok {a.output} ({W}x{H})')
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     main()

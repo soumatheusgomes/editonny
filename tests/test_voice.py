@@ -42,34 +42,34 @@ class VoiceTests(unittest.TestCase):
             collision = edit / 'cut_voice.mp4'
             collision.write_bytes(b'Unrelated personal footage')
             config = project / 'project.json'
-            config.write_text(json.dumps({'title': 'Voice lifecycle', 'edit': '../edit'}))
+            config.write_text(json.dumps({'title': 'Voice lifecycle', 'edit': '../edit'}), encoding='utf-8')
             def run(*arguments):
                 result = subprocess.run([sys.executable, str(VOICE), '--project', str(project),
-                                         *arguments], capture_output=True, text=True)
+                                         *arguments], capture_output=True, text=True, encoding='utf-8', errors='replace')
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 return result.stdout
             run('--effect', 'old-phone', '--start', '0.2', '--end', '0.8')
             self.assertEqual(collision.read_bytes(), b'Unrelated personal footage')
-            settings = json.loads(config.read_text())
+            settings = json.loads(config.read_text(encoding='utf-8'))
             processed = edit / settings['video']
             self.assertNotEqual(processed, collision)
-            marker = json.loads(processed.with_suffix('.json').read_text())
+            marker = json.loads(processed.with_suffix('.json').read_text(encoding='utf-8'))
             self.assertIn('sourceSignature', marker)
             self.assertIn('outputSignature', marker)
             self.assertIn('speech', marker)
             self.assertIn('report', marker)
             self.assertIn(': current', run())
             self.assertIn('Rebuilding', run('--effect', 'old-phone', '--start', '0.2', '--end', '0.8', '--ramp', '60'))
-            self.assertEqual(json.loads(processed.with_suffix('.json').read_text())['rampMs'], 60)
+            self.assertEqual(json.loads(processed.with_suffix('.json').read_text(encoding='utf-8'))['rampMs'], 60)
             self.assertIn('Rebuilding', run('--rebuild'))
             run('--clear')
-            self.assertEqual(json.loads(config.read_text()), {'title': 'Voice lifecycle', 'edit': '../edit'})
+            self.assertEqual(json.loads(config.read_text(encoding='utf-8')), {'title': 'Voice lifecycle', 'edit': '../edit'})
             self.assertFalse(processed.exists())
             self.assertEqual(source.read_bytes(), original)
             self.assertEqual(collision.read_bytes(), b'Unrelated personal footage')
 
     def test_list_exposes_english_effect_names(self):
-        result = subprocess.run([sys.executable, str(VOICE), '--list'], capture_output=True, text=True)
+        result = subprocess.run([sys.executable, str(VOICE), '--list'], capture_output=True, text=True, encoding='utf-8', errors='replace')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('old-phone', result.stdout)
         self.assertIn('robot', result.stdout)
@@ -86,7 +86,7 @@ class VoiceTests(unittest.TestCase):
             before = source.read_bytes()
             result = subprocess.run([sys.executable, str(VOICE), '--file', str(source),
                                      '--output', str(output), '--effect', 'old-phone',
-                                     '--start', '0.2', '--end', '0.8'], capture_output=True, text=True)
+                                     '--start', '0.2', '--end', '0.8'], capture_output=True, text=True, encoding='utf-8', errors='replace')
             self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
             self.assertEqual(source.read_bytes(), before)
             self.assertEqual(sorted(p.name for p in root.iterdir()), ['clip.mp4', 'clip.processing.mp4'])
@@ -103,7 +103,7 @@ class VoiceTests(unittest.TestCase):
             before = hashlib.sha256(source.read_bytes()).hexdigest()
             result = subprocess.run([sys.executable, str(VOICE), '--file', str(source),
                                      '--output', str(output), '--effect', 'old-phone',
-                                     '--start', '0.2', '--end', '0.8'], capture_output=True, text=True)
+                                     '--start', '0.2', '--end', '0.8'], capture_output=True, text=True, encoding='utf-8', errors='replace')
             self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
             self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), before)
             def probe(path):

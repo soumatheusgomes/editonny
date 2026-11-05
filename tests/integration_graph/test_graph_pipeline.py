@@ -17,17 +17,17 @@ class GraphPipelineTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix='editonny graph pipeline ')
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
-        (self.root / 'one.md').write_text('One calls the shared editor.')
-        (self.root / 'two.md').write_text('Two reviews the resulting video.')
-        (self.root / 'sample.py').write_text('def edit():\n    return 1\n')
-        (self.root / '.env').write_text('PRIVATE_SENTINEL=do-not-index')
-        (self.root / '.graphifyignore').write_text('.work/\ngraphify-out/\n.env\n')
+        (self.root / 'one.md').write_text('One calls the shared editor.', encoding='utf-8')
+        (self.root / 'two.md').write_text('Two reviews the resulting video.', encoding='utf-8')
+        (self.root / 'sample.py').write_text('def edit():\n    return 1\n', encoding='utf-8')
+        (self.root / '.env').write_text('PRIVATE_SENTINEL=do-not-index', encoding='utf-8')
+        (self.root / '.graphifyignore').write_text('.work/\ngraphify-out/\n.env\n', encoding='utf-8')
         self.stage = self.root / '.work/graphify'
         self.output = self.root / 'graphify-out'
         self.output.mkdir()
         self.prompt = self.root / '.work/extraction-spec.md'
         self.prompt.parent.mkdir()
-        self.prompt.write_text(extraction_prompt().read_text())
+        self.prompt.write_text(extraction_prompt().read_text(encoding='utf-8'), encoding='utf-8')
         write_json(self.output / 'graph.json', {'nodes': [{'id': 'old'}], 'edges': []})
 
     def update(self, watch=False):
@@ -38,7 +38,7 @@ class GraphPipelineTests(unittest.TestCase):
         else:
             code += 'print(json.dumps(runtime.run_update(Path(sys.argv[2]))))'
         result = subprocess.run([sys.executable, '-c', code, str(SCRIPTS), str(self.root), str(self.prompt)],
-                                env=env, capture_output=True, text=True, timeout=90)
+                                env=env, capture_output=True, text=True, timeout=90, encoding='utf-8', errors='replace')
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         return json.loads(result.stdout.splitlines()[-1])
 
@@ -89,8 +89,8 @@ class GraphPipelineTests(unittest.TestCase):
         self.assertFalse(any(e['source'] == 'one_b' and e['target'] == 'one_a' for e in edges))
         before = digest(self.output / 'graph.json')
         export = self.output / 'graph.html'
-        export.write_text('export from the current graph')
-        (self.output / 'needs_update').write_text('1')
+        export.write_text('export from the current graph', encoding='utf-8')
+        (self.output / 'needs_update').write_text('1', encoding='utf-8')
         self.assertEqual(self.update()['status'], 'unchanged')
         self.assertTrue(export.exists())
         self.assertFalse((self.output / 'needs_update').exists())
@@ -100,7 +100,7 @@ class GraphPipelineTests(unittest.TestCase):
 
     def test_rename_delete_and_ignore_prune_old_semantics(self):
         self.complete()
-        (self.output / 'graph.html').write_text('stale export')
+        (self.output / 'graph.html').write_text('stale export', encoding='utf-8')
         (self.root / 'one.md').rename(self.root / 'renamed.md')
         (self.root / 'two.md').unlink()
         data = self.complete()
@@ -109,13 +109,13 @@ class GraphPipelineTests(unittest.TestCase):
         self.assertIn('renamed.md', sources)
         self.assertNotIn('one.md', sources)
         self.assertNotIn('two.md', sources)
-        (self.root / '.graphifyignore').write_text('.work/\ngraphify-out/\n.env\nrenamed.md\n')
+        (self.root / '.graphifyignore').write_text('.work/\ngraphify-out/\n.env\nrenamed.md\n', encoding='utf-8')
         data = self.complete()
         self.assertNotIn('renamed.md', {n.get('source_file') for n in data['nodes']})
 
     def test_prompt_change_invalidates_completed_cache_and_pending_response(self):
         self.complete()
-        self.prompt.write_text(self.prompt.read_text() + '\nNew extraction contract.\n')
+        self.prompt.write_text(self.prompt.read_text(encoding='utf-8') + '\nNew extraction contract.\n', encoding='utf-8')
         self.assertEqual(self.update()['phase'], 'semantic')
         request_path = read_json(self.stage / 'pending.json')['requests'][0]
         request = read_json(request_path)
@@ -123,17 +123,17 @@ class GraphPipelineTests(unittest.TestCase):
         write_json(request['result'], {'provenance': PROVENANCE, 'nodes': [
             {'id': f'old_result_{i}', 'label': 'Old prompt', 'source_file': source, 'file_type': 'concept'}
             for i, source in enumerate(request['files'])], 'edges': []})
-        self.prompt.write_text(self.prompt.read_text() + '\nAnother contract change.\n')
+        self.prompt.write_text(self.prompt.read_text(encoding='utf-8') + '\nAnother contract change.\n', encoding='utf-8')
         self.assertEqual(self.update()['phase'], 'semantic')
         self.assertNotIn('old_result', json.dumps(read_json(self.output / 'graph.json')))
 
     def test_watch_preserves_parallel_relations_and_invalidates_exports(self):
         self.complete()
         for name in ['graph.html', 'GRAPH_TREE.html', 'CALLFLOW.html', 'graph.svg', 'graph.graphml', 'cypher.txt']:
-            (self.output / name).write_text('old derived output')
+            (self.output / name).write_text('old derived output', encoding='utf-8')
         flag = self.output / 'needs_update'
-        flag.write_text('1')
-        (self.root / 'sample.py').write_text('def edit():\n    return 2\ndef added():\n    return edit()\n')
+        flag.write_text('1', encoding='utf-8')
+        (self.root / 'sample.py').write_text('def edit():\n    return 2\ndef added():\n    return edit()\n', encoding='utf-8')
         self.assertEqual(self.update(watch=True)['status'], 'updated')
         data = read_json(self.output / 'graph.json')
         pair = [e for e in data['links'] if e['source'] == 'one_a' and e['target'] == 'one_b']
@@ -148,13 +148,13 @@ class GraphPipelineTests(unittest.TestCase):
     def test_missing_and_stale_results_leave_published_graph_unchanged(self):
         self.complete()
         before = digest(self.output / 'graph.json')
-        (self.root / 'one.md').write_text('Changed document requires another extraction.')
+        (self.root / 'one.md').write_text('Changed document requires another extraction.', encoding='utf-8')
         self.assertEqual(self.update()['phase'], 'semantic')
         self.assertEqual(before, digest(self.output / 'graph.json'))
         request_path = read_json(self.stage / 'pending.json')['requests'][0]
         request = read_json(request_path)
         write_json(request['result'], {'provenance': PROVENANCE, 'nodes': [], 'edges': []})
-        (self.root / 'one.md').write_text('Changed again before the result arrived.')
+        (self.root / 'one.md').write_text('Changed again before the result arrived.', encoding='utf-8')
         self.assertEqual(self.update()['phase'], 'semantic')
         self.assertEqual(before, digest(self.output / 'graph.json'))
 
@@ -162,7 +162,7 @@ class GraphPipelineTests(unittest.TestCase):
         memory = self.output / 'memory'
         memory.mkdir()
         first = memory / 'first.md'
-        first.write_text('Verified answer about the editor.')
+        first.write_text('Verified answer about the editor.', encoding='utf-8')
         data = self.complete()
         self.assertIn('graphify-out/memory/first.md', {n.get('source_file') for n in data['nodes']})
         self.assertTrue(first.is_file())
@@ -170,7 +170,7 @@ class GraphPipelineTests(unittest.TestCase):
         # An unchanged check leaves staging; new answers must still be read from output.
         first.unlink()
         second = memory / 'second.md'
-        second.write_text('Another verified answer about Motion.')
+        second.write_text('Another verified answer about Motion.', encoding='utf-8')
         data = self.complete()
         self.assertIn('graphify-out/memory/second.md', {n.get('source_file') for n in data['nodes']})
         self.assertNotIn('graphify-out/memory/first.md', {n.get('source_file') for n in data['nodes']})
@@ -183,7 +183,7 @@ class GraphPipelineTests(unittest.TestCase):
         self.assertEqual(self.update()['status'], 'unchanged')
         memory = self.output / 'memory/answer.md'
         memory.parent.mkdir()
-        memory.write_text('Old verified answer.')
+        memory.write_text('Old verified answer.', encoding='utf-8')
         before = digest(self.output / 'graph.json')
         code = '''
 import sys
@@ -203,10 +203,10 @@ runtime.run_update(root, semantic=False)
 '''
         result = subprocess.run([sys.executable, '-c', code, str(SCRIPTS), str(self.root), str(self.prompt)],
                                 env=dict(os.environ, GRAPHIFY_OUT=str(self.stage)),
-                                capture_output=True, text=True, timeout=90)
+                                capture_output=True, text=True, timeout=90, encoding='utf-8', errors='replace')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('Memories changed', result.stderr)
-        self.assertEqual(memory.read_text(), 'New verified answer.')
+        self.assertEqual(memory.read_text(encoding='utf-8'), 'New verified answer.')
         self.assertEqual(before, digest(self.output / 'graph.json'))
 
 

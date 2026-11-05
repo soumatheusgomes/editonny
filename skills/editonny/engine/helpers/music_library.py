@@ -321,7 +321,7 @@ def probe_audio(path: Path, name: str | None = None) -> dict:
 def integrated_lufs(path: Path) -> float | None:
     proc = subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-v", "info", "-i", str(path), "-vn", "-af",
                            "loudnorm=I=-14:TP=-1:LRA=11:print_format=json", "-f", "null", "-"],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, encoding='utf-8', errors='replace')
     m = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", proc.stderr or "", re.S)
     try:
         value = float(json.loads(m.group(0))["input_i"]) if m else None
@@ -404,7 +404,7 @@ def _convert(src: Path, dest: Path, sample_fmt: str) -> None:
     codec = "pcm_s16le" if sample_fmt.startswith(("s16", "u8")) else "pcm_s24le"
     proc = subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-v", "error", "-y", "-i", str(src), "-map", "0:a:0",
                            "-vn", "-ac", "2", "-ar", "48000", "-c:a", codec, "-f", "wav", str(dest)],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, encoding='utf-8', errors='replace')
     if proc.returncode != 0:
         tail = " ".join((proc.stderr or "").strip().splitlines()[-2:])[:200]
         raise MusicError(f'Could not convert {src.name} to WAV ({tail}).', 1)

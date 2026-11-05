@@ -62,7 +62,8 @@ test('copying from a scene dialog uses the saved agent', async ({ page, context 
   await page.goto('/en/catalog?scene=revenue-counter');
   await page.getByRole('dialog').getByRole('button', { name: 'Copy request' }).click();
   await expect(page.getByRole('status')).toContainText('Request copied.');
-  const clipboard = await page.evaluate(() => navigator.clipboard.readText());
+  // The Windows clipboard stores CRLF; the copied request itself uses LF.
+  const clipboard = (await page.evaluate(() => navigator.clipboard.readText())).replaceAll('\r\n', '\n');
   expect(clipboard.startsWith('/editonny\n')).toBe(true);
   expect(clipboard).toContain('Catalog reference: Revenue counter (revenue-counter).');
 });

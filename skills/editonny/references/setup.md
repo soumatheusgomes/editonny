@@ -48,7 +48,7 @@ Use a disposable synthetic composition to exercise the pinned renderer's lint/ch
 
 6. **Report the actual result.** State the resolved package/version, agent registrations, tool/capability results, model and browser cache results, OCR recognition result, media integrity, synthetic checks, update-check result, and remaining limits. Declare a complete installation only after required checks pass. A declined download, offline uncached resource, failed render/OCR check, `--no-sync`, or skipped check means preparation is incomplete; name the exact pending step and how to resume it. Do not leave an undisclosed “first-use” download. Tools already present need no reinstall.
 
-A standard installation stores one copy in `~/.local/share/editonny` and links the chosen agents to it. The installer respects `CLAUDE_CONFIG_DIR` when installing under the real home and does not rewrite general agent settings. Start a new conversation after installation. Windows directory links may require Developer Mode or suitable permissions; validate on the target operating system.
+A standard installation stores one copy in `~/.local/share/editonny` and links the chosen agents to it. The installer respects `CLAUDE_CONFIG_DIR` when installing under the real home and does not rewrite general agent settings. Start a new conversation after installation. On Windows the installer falls back to a directory junction when symlinks need Developer Mode or administrator rights, and `python3` is often a Microsoft Store stub, so use `python` or `py -3` there. Validate on the target operating system.
 
 ## Preflight at every invocation
 

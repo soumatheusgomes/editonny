@@ -59,7 +59,7 @@ def run(cmd: list[str], quiet: bool = False, check: bool = True, capture: bool =
         [str(c) for c in cmd],
         capture_output=quiet or capture,
         text=True,
-    )
+    encoding='utf-8', errors='replace')
     if check and proc.returncode != 0:
         tail = (proc.stderr or "")[-2000:] if (quiet or capture) else ""
         raise RuntimeError(f"command failed ({proc.returncode}): {' '.join((str(c) for c in cmd))}\n{tail}")
@@ -80,7 +80,7 @@ def require_binary(name: str) -> str:
 
 
 def has_ffmpeg_filter(name: str) -> bool:
-    proc = subprocess.run(["ffmpeg", "-hide_banner", "-filters"], capture_output=True, text=True)
+    proc = subprocess.run(["ffmpeg", "-hide_banner", "-filters"], capture_output=True, text=True, encoding='utf-8', errors='replace')
     for line in proc.stdout.splitlines():
         parts = line.split()
         if len(parts) >= 2 and parts[1] == name:
@@ -119,7 +119,7 @@ def _rotation_of(stream: dict) -> int:
 def _observed_cadence(path: str, stream: int, rate: str, time_base: str, signature: tuple) -> dict:
     # Demux timestamps without decoding; the stat identity invalidates the in-process probe cache.
     process = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', str(stream), '-show_packets',
-        '-show_entries', 'packet=pts', '-of', 'json', path], capture_output=True, text=True, timeout=600, check=True)
+        '-show_entries', 'packet=pts', '-of', 'json', path], capture_output=True, text=True, timeout=600, check=True, encoding='utf-8', errors='replace')
     packets = json.loads(process.stdout).get('packets', [])
     if not packets or any('pts' not in packet for packet in packets):
         raise ValueError('Source presentation timing is unknown; preservation cannot assume CFR')
@@ -206,7 +206,7 @@ def probe_video(path: Path | str) -> dict:
 
 def _video_stamps(path: Path | str) -> tuple[Fraction, list[tuple[int, int]]]:
     process = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries',
-        'stream=time_base:packet=pts,dts', '-of', 'json', str(path)], capture_output=True, text=True, timeout=600, check=True)
+        'stream=time_base:packet=pts,dts', '-of', 'json', str(path)], capture_output=True, text=True, timeout=600, check=True, encoding='utf-8', errors='replace')
     data = json.loads(process.stdout)
     packets = data.get('packets', [])
     if not packets or any('pts' not in p or 'dts' not in p for p in packets):
@@ -226,7 +226,7 @@ def restamp_cfr(video: Path, rate: str) -> None:
         output = Path(temporary) / 'candidate.mp4'
         process = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(video), '-map', '0', '-c', 'copy', '-bsf:v', grid,
             '-video_track_timescale', str(time_base.denominator), '-movflags', '+faststart', str(output)],
-            capture_output=True, text=True, timeout=600)
+            capture_output=True, text=True, timeout=600, encoding='utf-8', errors='replace')
         if process.returncode:
             raise ValueError('Could not restamp video timestamps: ' + process.stderr[-300:])
         restamped_base, stamps = _video_stamps(output)
@@ -271,7 +271,10 @@ def content_hash(path: Path | str) -> str:
         after = os.fstat(stream.fileno())
     current = path.stat()
     identity = lambda stat: (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
-    if identity(before) != identity(after) or identity(after) != identity(current):
+    # On Windows, os.stat reports creation time as st_ctime while os.fstat reports change time,
+    # so the open handle is compared without it; the two path stats still compare in full.
+    handle = lambda stat: identity(stat)[:4]
+    if identity(before) != identity(current) or handle(after) != handle(current):
         raise ValueError(f'Source changed while hashing: {path.name}; inspect it again')
     return digest.hexdigest()
 
@@ -384,6 +387,9 @@ def load_style_catalog() -> dict:
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     import pprint
 
     if len(sys.argv) > 1 and sys.argv[1] not in ("-h", "--help"):

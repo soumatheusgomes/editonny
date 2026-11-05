@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from test_visual_media import fixture, media_module
+from workflow_fixtures import make_link
 
 ROOT = Path(__file__).resolve().parents[1]
 VISUALS = ROOT / 'skills/editonny/visuals'
@@ -80,7 +81,7 @@ class VisualResourceTests(unittest.TestCase):
                     if invalid == 'directory':
                         target.mkdir()
                     else:
-                        target.symlink_to(root / 'missing')
+                        make_link(self, target, root / 'missing')
                 with self.assertRaises(ValueError):
                     resources().copy_assets(source, project)
                 self.assertFalse((project / 'assets/visuals/first.png').exists())
@@ -161,10 +162,10 @@ class VisualResourceTests(unittest.TestCase):
                 outside.mkdir()
                 if side == 'source':
                     (outside / 'file').write_bytes(b'private')
-                    (source / 'assets/visuals/file').symlink_to(outside / 'file')
+                    make_link(self, (source / 'assets/visuals/file'), outside / 'file')
                 else:
                     (source / 'assets/visuals/file').write_bytes(b'asset')
-                    (project / 'assets').symlink_to(outside, target_is_directory=True)
+                    make_link(self, (project / 'assets'), outside, directory=True)
                 with self.assertRaises(ValueError):
                     resources().copy_assets(source, project)
                 self.assertFalse((outside / 'visuals/file').exists())
@@ -173,7 +174,7 @@ class VisualResourceTests(unittest.TestCase):
         import re
         mapping = {i['destination']: i for i in media_module().manifest(VISUALS) if 'destination' in i}
         for path in (VISUALS / 'scenes').glob('*.html'):
-            refs = re.findall(r'assets/visuals/[^\s"\'`<>]+\.(?:webm|mp4)', path.read_text())
+            refs = re.findall(r'assets/visuals/[^\s"\'`<>]+\.(?:webm|mp4)', path.read_text(encoding='utf-8'))
             for ref in refs:
                 self.assertIn(ref, mapping, path.name)
 

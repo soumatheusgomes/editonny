@@ -60,7 +60,7 @@ def safe_zone_for(w: int, h: int) -> tuple[int, int, int, int] | None:
 def black_intervals(video: Path, dur: float) -> list[tuple[float, float]]:
     r = subprocess.run(["ffmpeg", "-nostdin", "-v", "info", "-i", str(video), "-vf",
                         f'blackdetect=d={BLACK_MIN_S - 0.02:.2f}:pix_th=0.06', "-an", "-f", "null", "-"],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding='utf-8', errors='replace')
     out = []
     if r.returncode:
         raise RuntimeError('Could not decode video for black-frame inspection: ' + r.stderr[-300:])
@@ -75,7 +75,7 @@ def black_intervals(video: Path, dur: float) -> list[tuple[float, float]]:
 def volume(video: Path, complete: bool = False, target_lufs: float = -14, processing_peak: float = -1.5) -> dict:
     r = subprocess.run(["ffmpeg", "-nostdin", "-v", "info", "-i", str(video), "-vn", "-af",
                         f'loudnorm=I={target_lufs}:TP={processing_peak}:LRA=11:print_format=json', "-f", "null", "-"],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding='utf-8', errors='replace')
     m = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", r.stderr, re.S)
     if r.returncode or not m:
         raise RuntimeError('Could not measure loudness. Does the file have audio?')
@@ -101,7 +101,7 @@ def adjust_volume(video: Path, target_lufs: float = -14, processing_peak: float 
     try:
         r = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-i", str(video), "-map", "0:v", "-map", "0:a",
                             "-c:v", "copy", "-af", af, "-ar", "48000", "-c:a", "aac", "-b:a", "192k",
-                            "-movflags", "+faststart", str(new_value)], capture_output=True, text=True)
+                            "-movflags", "+faststart", str(new_value)], capture_output=True, text=True, encoding='utf-8', errors='replace')
         if r.returncode != 0 or not new_value.stat().st_size:
             raise RuntimeError('Could not adjust loudness: ' + r.stderr[-300:])
         measured = volume(new_value)
@@ -376,4 +376,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     raise SystemExit(main())

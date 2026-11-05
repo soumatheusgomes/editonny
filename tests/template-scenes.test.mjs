@@ -5,6 +5,10 @@ import { createServer } from 'node:http';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import { pythonCommand } from '../scripts/python.mjs';
+import { agentBrowserCommand } from '../scripts/agent-browser.mjs';
+
+const [python, ...pythonPrefix] = pythonCommand();
 
 // Reuse a prepared project runtime with EDITONNY_GSAP to run without network access.
 test('2D scene templates mount, animate, and seek without missing targets or duplicate IDs', async () => {
@@ -49,26 +53,37 @@ test('2D scene templates mount, animate, and seek without missing targets or dup
     await document.fonts.ready;
   };
   </script></body></html>`;
+  // Scene sources reach the page through this server: Windows caps a command line near 32 K characters.
+  const sources = new Map();
+  let sourceCount = 0;
   const server = createServer(async (req, res) => {
     try {
       if (req.url === '/') { res.setHeader('Content-Type', 'text/html');res.end(page); }
       else if (req.url === '/gsap.js') { res.setHeader('Content-Type', 'text/javascript');res.end(gsap); }
+      else if (sources.has(req.url)) { res.setHeader('Content-Type', 'text/plain; charset=utf-8');res.end(sources.get(req.url)); }
       else if (/^\/assets\/fonts\/[\w.-]+$/.test(req.url)) res.end(await readFile(root + req.url.slice(1)));
       else { res.statusCode=404;res.end(); }
     } catch { res.statusCode=500;res.end(); }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const session = `editonny-template-scenes-${process.pid}`, exec = promisify(execFile);
+  const [agentBrowser, ...agentBrowserPrefix] = agentBrowserCommand();
   const browser = async (...args) => {
-    const { stdout } = await exec('agent-browser', ['--session', session, '--json', ...args], { timeout:30000,maxBuffer:2**20 });
+    const { stdout } = await exec(agentBrowser, [...agentBrowserPrefix, '--session', session, '--json', ...args], { timeout:30000,maxBuffer:2**20 });
     const result = JSON.parse(stdout);assert.equal(result.success,true,JSON.stringify(result.error));return result.data;
   };
   const evaluate = async source => (await browser('eval',source)).result;
+  const mount = async (source, context = {}) => {
+    const path = `/source/${sourceCount++}`;
+    sources.set(path, source);
+    try { await evaluate(`(async()=>{await window.mount(await (await fetch(${JSON.stringify(path)})).text(),${JSON.stringify(context)});})()`); }
+    finally { sources.delete(path); }
+  };
   const usedIds = new Set();
   try {
     await browser('open',`http://127.0.0.1:${server.address().port}`);
     for(const scene of scenes){
-      await evaluate(`window.mount(${JSON.stringify(scene.html)})`);
+      await mount(scene.html);
       await browser('wait','--fn',`Boolean(window.__timelines[${JSON.stringify(scene.id)}])`);
       const result=await evaluate(`(()=>{
         const tl=window.__timelines[${JSON.stringify(scene.id)}],ids=[...document.querySelectorAll('[id]')].map(e=>e.id);
@@ -108,7 +123,7 @@ test('2D scene templates mount, animate, and seek without missing targets or dup
       for(const variant of variants){
         const source=scene.html.replace('const C = Object.assign',`Object.assign(PARAM,${JSON.stringify(variant.params||{})}); const C = Object.assign`);
         const label=`${scene.id}: ${variant.name}`;
-        await evaluate(`window.mount(${JSON.stringify(source)},${JSON.stringify(variant.context||{})})`);
+        await mount(source,variant.context||{});
         assert.deepEqual(await evaluate('window.failures'),[],label);
         await browser('wait','--fn',`Boolean(window.__timelines[${JSON.stringify(scene.id)}])`);
         const checked=await evaluate(`(()=>{const tl=window.__timelines[${JSON.stringify(scene.id)}];for(const t of [0,tl.duration()/2,tl.duration(),1])tl.seek(t,false);return {failures,invalid:[...document.querySelectorAll('[style]')].some(e=>/NaN|Infinity/.test(e.getAttribute('style'))),nodes:document.querySelectorAll('.diagram-node').length};})()`);
@@ -117,7 +132,7 @@ test('2D scene templates mount, animate, and seek without missing targets or dup
       }
     }
     for(const scene of propertyScenes){
-      await evaluate(`window.mount(${JSON.stringify(scene.html)})`);
+      await mount(scene.html);
       const checked=await evaluate(`(()=>{
         const timeline=window.__timelines[${JSON.stringify(scene.id)}];
         const snapshots=[];
@@ -133,22 +148,22 @@ test('2D scene templates mount, animate, and seek without missing targets or dup
       assert.equal(checked.deterministic,true,`${scene.id}: backward seek`);
     }
     // Fixed layouts as scene --use writes them: renamed copies keep runtime-built selectors, and a final-frame hold skips the exit.
-    const fixedCopies=JSON.parse((await exec('python3',['-B','-c',`import json, apply
+    const fixedCopies=JSON.parse((await exec(python,[...pythonPrefix,'-B','-c',`import json, apply
 out = []
 for c in apply.catalog().values():
     if c['layout'] in ('fullscreen', 'frame') and not c.get('adaptation'):
-        new, d = c['id'] + '-01', float(c['duration']); copy = apply.replace_id(open('scenes/%s.html' % c['id']).read(), c['id'], new)
+        new, d = c['id'] + '-01', float(c['duration']); copy = apply.replace_id(open('scenes/%s.html' % c['id'], encoding='utf-8').read(), c['id'], new)
         fit = lambda html: (apply.wait_for_frame if c['layout'] == 'frame' else apply.shorten)(apply.hold_exit(html, new, 20, d - .5), new, d, round(d * .9, 3))
         out.append({'id': new, 'copy': copy, 'hold': fit(copy)})
         if c['id'] == 'location-map-panel': out[-1]['late'] = fit(apply.set_parameter(copy, 'others', 'SCHOOL'))
 print(json.dumps(out))`],{cwd:fileURLToPath(new URL('../skills/editonny/visuals/',import.meta.url)),maxBuffer:2**27})).stdout);
     assert.ok(fixedCopies.length>=38,'fixed-layout scenes');
     for(const scene of fixedCopies){
-      await evaluate(`window.mount(${JSON.stringify(scene.copy)})`);
+      await mount(scene.copy);
       await browser('wait','--fn',`Boolean(window.__timelines[${JSON.stringify(scene.id)}])`);
       assert.deepEqual(await evaluate(`(()=>{const tl=window.__timelines[${JSON.stringify(scene.id)}];for(let t=0;t<=tl.duration();t+=.25)tl.seek(t,false);return failures;})()`),[],`${scene.id}: copied selectors`);
       // The held copy was written for a cut ending at 20 s: ending there keeps it visible, moving it earlier restores the exit.
-      const ending=async(source,context)=>{await evaluate(`window.mount(${JSON.stringify(source)},${JSON.stringify(context)})`);
+      const ending=async(source,context)=>{await mount(source,context);
         await browser('wait','--fn',`Boolean(window.__timelines[${JSON.stringify(scene.id)}])`);
         return evaluate(`(()=>{const tl=window.__timelines[${JSON.stringify(scene.id)}],opacity=()=>[...document.querySelectorAll('[id]')].map(e=>Number(getComputedStyle(e).opacity));
           tl.seek(tl.duration()-.6,false);const before=opacity();tl.seek(tl.duration(),false);const after=opacity();
@@ -160,11 +175,11 @@ print(json.dumps(out))`],{cwd:fileURLToPath(new URL('../skills/editonny/visuals/
       if(scene.late){const late=await ending(scene.late,{end:20,words:[{text:'SCHOOL',t:4.9,end:5.1}]});assert.ok(late.late.length&&late.late.every(o=>o>.99),`${scene.id}: late word entrance on the final frame`);}
     }
     const recovery=await readFile(new URL('../skills/editonny/visuals/scenes/muscle-recovery.html',import.meta.url),'utf8');
-    await evaluate(`window.mount(${JSON.stringify(recovery)})`);
+    await mount(recovery);
     assert.deepEqual(await evaluate(`[...document.querySelectorAll('svg [fill]')].map(e=>e.getAttribute('fill')).filter(fill=>!CSS.supports('fill',fill))`),[],'recovery icons use valid configured colors');
     const attempts=await readFile(new URL('../skills/editonny/visuals/scenes/attempt-counter.html',import.meta.url),'utf8');
     for(const correct of [0,1,2,3]){
-      await evaluate(`window.mount(${JSON.stringify(attempts)}.replace('correct: 3','correct: '+${correct}))`);
+      await mount(attempts.replace('correct: 3','correct: '+correct));
       const successful=await evaluate(`[...document.querySelectorAll('.attemptcounter-it')].flatMap((e,i)=>e.querySelectorAll('svg path').length===1?[i+1]:[])`);
       assert.deepEqual(successful,correct?[correct]:[],`attempt counter honors correct=${correct}`);
     }
@@ -173,7 +188,7 @@ print(json.dumps(out))`],{cwd:fileURLToPath(new URL('../skills/editonny/visuals/
     const textScenes=(await Promise.all((await readdir(sceneDir)).filter(f=>f.startsWith('text-')).map(async f=>readFile(new URL(f,sceneDir),'utf8')))).filter(html=>html.includes('C.words')&&html.split('screens(').length>2);   // Caption scenes call screens().
     assert.ok(textScenes.length>=9,'caption scenes with a standalone demo');
     for(const html of textScenes){
-      const demo=async context=>{await evaluate(`window.mount(${JSON.stringify(html)},${JSON.stringify(context)})`);
+      const demo=async context=>{await mount(html,context);
         await browser('wait','--fn','Object.keys(window.__timelines).length>0');
         return evaluate(`(()=>{let demo=false;for(let t=0;t<=3.4;t+=.1)for(const tl of Object.values(window.__timelines)){tl.seek(t,false);demo||=/editor/i.test(document.querySelector('[data-composition-id]').textContent);}return {failures,demo};})()`);};
       const id=html.match(/data-composition-id="([^"]+)"/)[1];

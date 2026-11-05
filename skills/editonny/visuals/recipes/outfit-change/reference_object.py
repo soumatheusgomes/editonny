@@ -49,7 +49,7 @@ def main():
     arr = np.array([pts[min(idx, key=lambda j: abs(j - i))] for i in range(len(pts))])
     cuts = [0]
     if a.request:
-        request_data = json.load(open(a.request))
+        request_data = json.load(open(a.request, encoding='utf-8'))
         ac = 0.0
         for p in request_data['pieces'][:-1]:
             ac += p['frames'] / request_data['sourceFps']
@@ -103,4 +103,7 @@ def main():
     ff.wait()
     print(f'ok {a.output}: {len(frs)} frames at {fps:.2f} fps · shoulders {shoulders / a.scale:.0f} px · hand {a.hand} · shape {a.shape}' + (f' · cuts at frames {cuts[1:-1]}' if len(cuts) > 2 else ''))
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     main()

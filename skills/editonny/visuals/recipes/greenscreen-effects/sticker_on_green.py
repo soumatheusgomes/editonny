@@ -55,4 +55,7 @@ def main():
     cv.convert('RGB').save(a.output)
     print(f'ok {a.output}: sticker {W}x{H} at x {X}..{X + W}, y {Y}..{Y + H}')
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     main()

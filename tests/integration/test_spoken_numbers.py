@@ -47,13 +47,13 @@ class SpokenMoneyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             edit = Path(tmp)
             (edit / 'transcripts').mkdir()
-            (edit / 'cut_timeline.json').write_text(json.dumps({'duration':20,'segments':[]}))
+            (edit / 'cut_timeline.json').write_text(json.dumps({'duration':20,'segments':[]}), encoding='utf-8')
             for expression, expected, prefix in self.CASES:
                 with self.subTest(expression=expression):
                     words = [{'text':word,'start':5+i*.3,'end':5+i*.3+.25} for i,word in enumerate(expression.split())]
-                    (edit / 'transcripts/cut.json').write_text(json.dumps({'words':words}))
+                    (edit / 'transcripts/cut.json').write_text(json.dumps({'words':words}), encoding='utf-8')
                     result = subprocess.run([sys.executable,str(HELPERS/'suggest_visuals.py'),'--edit-dir',str(edit),'--json'],
-                                            capture_output=True,text=True,timeout=20)
+                                            capture_output=True,text=True,timeout=20, encoding='utf-8', errors='replace')
                     self.assertEqual(result.returncode,0,result.stderr)
                     motions=json.loads(result.stdout)['motion']
                     money=[m for m in motions if m['template'] in ('counter','price_tag')]
@@ -67,11 +67,11 @@ class SpokenMoneyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             edit = Path(tmp)
             (edit / 'transcripts').mkdir()
-            (edit / 'cut_timeline.json').write_text(json.dumps({'duration':20,'segments':[]}))
+            (edit / 'cut_timeline.json').write_text(json.dumps({'duration':20,'segments':[]}), encoding='utf-8')
             words = [{'text':word,'start':5+i*.3,'end':5+i*.3+.25} for i,word in enumerate('comenta a palavra ideia aqui'.split())]
-            (edit / 'transcripts/cut.json').write_text(json.dumps({'words':words}))
+            (edit / 'transcripts/cut.json').write_text(json.dumps({'words':words}), encoding='utf-8')
             result = subprocess.run([sys.executable,str(HELPERS/'suggest_visuals.py'),'--edit-dir',str(edit),'--json'],
-                                    capture_output=True,text=True,timeout=20)
+                                    capture_output=True,text=True,timeout=20, encoding='utf-8', errors='replace')
             self.assertEqual(result.returncode,0,result.stderr)
             comments=[m for m in json.loads(result.stdout)['motion'] if m['template']=='comment_cta']
             self.assertEqual(len(comments),1,result.stdout)
@@ -81,13 +81,13 @@ class SpokenMoneyTests(unittest.TestCase):
             self.assertNotIn('{',prompt)
 
     def test_assemble_sources_cli(self):
-        result=subprocess.run([sys.executable,str(HELPERS/'assemble_cut.py'),'--help'],capture_output=True,text=True)
+        result=subprocess.run([sys.executable,str(HELPERS/'assemble_cut.py'),'--help'],capture_output=True,text=True, encoding='utf-8', errors='replace')
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertIn('--sources',result.stdout)
         self.assertNotIn('--fonts',result.stdout)
         with tempfile.TemporaryDirectory() as edit:
             selected = subprocess.run([sys.executable,str(HELPERS/'assemble_cut.py'),'--edit-dir',edit,
-                                       '--sources','requested.mov','--dry-run'],capture_output=True,text=True)
+                                       '--sources','requested.mov','--dry-run'],capture_output=True,text=True, encoding='utf-8', errors='replace')
             self.assertEqual(selected.returncode,2)
             self.assertIn('no transcript: requested',selected.stderr)
             self.assertNotIn('unrecognized arguments',selected.stderr)

@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from workflow_fixtures import make_link
 
 ROOT = Path(__file__).resolve().parents[1]
 VISUALS = ROOT / 'skills/editonny/visuals'
@@ -31,7 +32,7 @@ def fixture(root):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
         items.append(dict(file=relative, bytes=len(data), sha256=hashlib.sha256(data).hexdigest(), destination=relative))
-    (source / 'media.json').write_text(json.dumps({'version': 1, 'videos': items}))
+    (source / 'media.json').write_text(json.dumps({'version': 1, 'videos': items}), encoding='utf-8')
     return source, items
 
 
@@ -95,10 +96,10 @@ class VisualMediaTests(unittest.TestCase):
                 if case == 'symlink':
                     path = source / items[0]['file']
                     path.unlink()
-                    path.symlink_to(source / items[1]['file'])
+                    make_link(self, path, source / items[1]['file'])
                 if case == 'destination_link':
-                    (bundle / 'assets').symlink_to(source / 'assets', target_is_directory=True)
-                (bundle / 'media.json').write_text(json.dumps({'version': 1, 'videos': items}))
+                    make_link(self, (bundle / 'assets'), source / 'assets', directory=True)
+                (bundle / 'media.json').write_text(json.dumps({'version': 1, 'videos': items}), encoding='utf-8')
                 with self.assertRaises(ValueError):
                     media_module().import_media(bundle, source)
 
@@ -110,7 +111,7 @@ class VisualMediaTests(unittest.TestCase):
             script = bundle / 'media.py'
             script.write_bytes((VISUALS / 'media.py').read_bytes())
             result = subprocess.run([sys.executable, str(script), 'status', '--json'],
-                env=dict(os.environ, HOME=temp, EDITONNY_MEDIA_DIR=str(source)), capture_output=True, text=True)
+                env=dict(os.environ, HOME=temp, EDITONNY_MEDIA_DIR=str(source)), capture_output=True, text=True, encoding='utf-8', errors='replace')
             self.assertEqual(result.returncode, 1, result.stderr)
             report = json.loads(result.stdout)
             self.assertEqual(report['available'], 0)
@@ -121,7 +122,7 @@ class VisualMediaTests(unittest.TestCase):
     def test_complete_skill_works_without_external_library_configuration(self):
         with tempfile.TemporaryDirectory() as temp:
             result = subprocess.run([sys.executable, str(ROOT / 'editonny.py'), 'media', 'status', '--json'],
-                env=dict(os.environ, HOME=temp, EDITONNY_MEDIA_DIR=str(Path(temp) / 'obsolete')), capture_output=True, text=True)
+                env=dict(os.environ, HOME=temp, EDITONNY_MEDIA_DIR=str(Path(temp) / 'obsolete')), capture_output=True, text=True, encoding='utf-8', errors='replace')
             self.assertEqual(result.returncode, 0, result.stderr)
             report = json.loads(result.stdout)
             self.assertEqual(Path(report['root']).resolve(), VISUALS.resolve())

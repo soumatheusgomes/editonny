@@ -28,7 +28,7 @@ class AuditCutTests(unittest.TestCase):
     def test_states_the_prompt_regime(self):
         with tempfile.TemporaryDirectory() as tmp:
             for name in ('cut.mp4', 'edl.json'):
-                (Path(tmp) / name).write_text('{}')
+                (Path(tmp) / name).write_text('{}', encoding='utf-8')
             for extra, regime in (([], ['--no-prompt']), (['--prompt', 'Kiwify'], ['--prompt', 'Kiwify'])):
                 commands = self.audit(tmp, *extra)[2]
                 command = next(c for c in commands if c[0].endswith('transcribe.py'))
@@ -37,11 +37,11 @@ class AuditCutTests(unittest.TestCase):
     def test_breaths_inside_dry_false_intervals_are_kept_apart(self):
         with tempfile.TemporaryDirectory() as tmp:
             edit = Path(tmp)
-            (edit / 'cut.mp4').write_text('')
-            (edit / 'edl.json').write_text(json.dumps({'ranges': [{'id': 'r01', 'dry': False}, {'id': 'r02'}]}))
+            (edit / 'cut.mp4').write_text('', encoding='utf-8')
+            (edit / 'edl.json').write_text(json.dumps({'ranges': [{'id': 'r01', 'dry': False}, {'id': 'r02'}]}), encoding='utf-8')
             (edit / 'cut_timeline.json').write_text(json.dumps({'segments': [
                 {'id': 'r01', 'out_start': 1.0, 'out_end': 3.0, 'quote': 'keep this pause'},
-                {'id': 'r02', 'out_start': 3.0, 'out_end': 8.0, 'quote': 'tight'}]}))
+                {'id': 'r02', 'out_start': 3.0, 'out_end': 8.0, 'quote': 'tight'}]}), encoding='utf-8')
             code, out, _ = self.audit(edit, breaths=[{'start': 1.5, 'end': 2.0, 'dur': 0.5}, {'start': 5.0, 'end': 5.6, 'dur': 0.6}])
             self.assertEqual(code, 1)
             self.assertIn('breaths: 1 silences of 0.25 s or more (below -40 dB):', out)

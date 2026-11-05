@@ -1,13 +1,16 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
+// Vite matches aliases against forward-slash ids, so Windows paths are normalized.
+const dir = (path: string) => fileURLToPath(new URL(path, import.meta.url)).replaceAll('\\', '/');
+
 export default defineConfig({
   resolve: {
     alias: {
-      '@/': fileURLToPath(new URL('./src/', import.meta.url)),
-      '@content/': fileURLToPath(new URL('./content/', import.meta.url)),
+      '@/': dir('./src/'),
+      '@content/': dir('./content/'),
       // `server-only` throws outside React Server Components; unit tests run the same modules in Node.
-      'server-only': fileURLToPath(new URL('./src/test/server-only.ts', import.meta.url)),
+      'server-only': dir('./src/test/server-only.ts'),
     },
   },
   test: {

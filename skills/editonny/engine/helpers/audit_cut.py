@@ -22,7 +22,7 @@ from pack_transcripts import cut_phrases, group_into_phrases, render_cut_markdow
 
 def run(cmd: list[str]) -> tuple[int, str, float]:
     t0 = time.monotonic()
-    proc = subprocess.run([sys.executable, *cmd], capture_output=True, text=True, cwd=HELPERS.parent)
+    proc = subprocess.run([sys.executable, *cmd], capture_output=True, text=True, cwd=HELPERS.parent, encoding='utf-8', errors='replace')
     return proc.returncode, (proc.stdout + proc.stderr).strip(), time.monotonic() - t0
 
 
@@ -207,4 +207,7 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     sys.exit(main())
