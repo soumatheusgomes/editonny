@@ -657,4 +657,7 @@ def decode_clip(path: Path | str, w: int, h: int) -> np.ndarray:
 
 
 if __name__ == "__main__":  # pragma: no cover
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     sys.exit("use helpers/render_visuals.py")

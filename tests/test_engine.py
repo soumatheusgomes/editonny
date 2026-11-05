@@ -12,6 +12,7 @@ import tempfile
 import unittest
 from unittest import mock
 import warnings
+from workflow_fixtures import make_link
 
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE = ROOT / 'skills/editonny/engine'
@@ -25,15 +26,15 @@ class EngineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
             sounds = [{'file': 'assets/user-sound.wav', 'start': 1}]
-            (project / 'project.json').write_text(json.dumps({'sounds': sounds}))
+            (project / 'project.json').write_text(json.dumps({'sounds': sounds}), encoding='utf-8')
             events = project / 'events.json'
-            events.write_text('[{"t": 1, "sound": "user-sound.wav"}]')
+            events.write_text('[{"t": 1, "sound": "user-sound.wav"}]', encoding='utf-8')
             original_events = events.read_bytes()
             output = io.StringIO()
             with mock.patch.object(apply, 'copy_assets', return_value=0), contextlib.redirect_stdout(output), warnings.catch_warnings():
                 warnings.simplefilter('ignore', ResourceWarning)
                 apply.use_scene(str(project), 'three-steps', 0, 6)
-            self.assertEqual(json.loads((project / 'project.json').read_text())['sounds'], sounds)
+            self.assertEqual(json.loads((project / 'project.json').read_text(encoding='utf-8'))['sounds'], sounds)
             self.assertEqual(events.read_bytes(), original_events)
             self.assertNotIn('--sounds', output.getvalue())
 
@@ -55,14 +56,14 @@ class EngineTests(unittest.TestCase):
                 project = create_workspace(root / 'downloads', 'Audio scope', inspection, c, confirmation(c, inspection))
                 path = project / 'project.json'
                 if scenes != 'off':
-                    current = json.loads(path.read_text())
+                    current = json.loads(path.read_text(encoding='utf-8'))
                     current['scenes'] = [{'sceneId': 'transition-glow', 'start': 0, 'end': 1}]
-                    path.write_text(json.dumps(current))
+                    path.write_text(json.dumps(current), encoding='utf-8')
                 events = project / 'events.json'
-                events.write_text('[{"t": 2, "sound": "user-sound.wav"}]')
+                events.write_text('[{"t": 2, "sound": "user-sound.wav"}]', encoding='utf-8')
                 original_project, original_events = path.read_bytes(), events.read_bytes()
                 result = subprocess.run([sys.executable, str(VISUALS / 'apply.py'),
-                    '--project', str(project), '--sounds'], capture_output=True, text=True)
+                    '--project', str(project), '--sounds'], capture_output=True, text=True, encoding='utf-8', errors='replace')
                 self.assertEqual(path.read_bytes(), original_project)
                 self.assertEqual(source.read_bytes(), b'original footage')
                 if not effects:
@@ -71,7 +72,7 @@ class EngineTests(unittest.TestCase):
                     self.assertEqual(events.read_bytes(), original_events)
                 else:
                     self.assertEqual(result.returncode, 0, result.stderr)
-                    generated = json.loads(events.read_text())
+                    generated = json.loads(events.read_text(encoding='utf-8'))
                     self.assertEqual(generated[0 if scenes == 'off' else -1]['sound'], 'user-sound.wav')
                     self.assertEqual(sum(bool(e.get('sceneId')) for e in generated), int(scenes != 'off'))
 
@@ -81,7 +82,7 @@ class EngineTests(unittest.TestCase):
             project = root / 'project'
             project.mkdir()
             config = project / 'project.json'
-            config.write_text('{}')
+            config.write_text('{}', encoding='utf-8')
             bundle = root / 'incomplete bundle'
             bundle.mkdir()
             for name in ('apply.py', 'resources.py', 'media.py', 'media.json', 'catalog.json', 'numbers.json'):
@@ -91,11 +92,11 @@ class EngineTests(unittest.TestCase):
             (bundle / 'scenes' / scene).write_bytes((VISUALS / 'scenes' / scene).read_bytes())
             result = subprocess.run([sys.executable, str(bundle / 'apply.py'),
                 '--project', str(project), '--use', 'object-card', '--start', '0'],
-                env=dict(os.environ, EDITONNY_MEDIA_DIR=str(root / 'absent')), capture_output=True, text=True)
+                env=dict(os.environ, EDITONNY_MEDIA_DIR=str(root / 'absent')), capture_output=True, text=True, encoding='utf-8', errors='replace')
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('media import', result.stderr)
             self.assertNotIn('Traceback', result.stderr)
-            self.assertEqual(config.read_text(), '{}')
+            self.assertEqual(config.read_text(encoding='utf-8'), '{}')
             self.assertEqual(list(project.iterdir()), [config])
 
     def test_scene_without_arguments_does_not_create_an_installation(self):
@@ -107,7 +108,7 @@ class EngineTests(unittest.TestCase):
                 (bundle / name).write_bytes((VISUALS / name).read_bytes())
             result = subprocess.run([sys.executable, str(bundle / 'apply.py')],
                                     env=dict(os.environ, HOME=str(home)),
-                                    capture_output=True, text=True)
+                                    capture_output=True, text=True, encoding='utf-8', errors='replace')
             self.assertNotEqual(result.returncode, 0)
             self.assertIn('--project', result.stderr)
             self.assertFalse((home / '.local/share/editonny').exists())
@@ -120,25 +121,25 @@ class EngineTests(unittest.TestCase):
                 project = Path(tmp)
                 scenes = project / 'compositions/scenes'
                 scenes.mkdir(parents=True)
-                (project / 'project.json').write_text('{}')
+                (project / 'project.json').write_text('{}', encoding='utf-8')
                 # A gap must not make the next copy collide with a later edit.
                 for number in (1, 3):
-                    (scenes / f'{prefix}-{number:02d}-{suffix}.html').write_text('PERSONAL EDIT')
+                    (scenes / f'{prefix}-{number:02d}-{suffix}.html').write_text('PERSONAL EDIT', encoding='utf-8')
                 extra = ['--cuts', '1,2'] if option == '--transition' else ['--count', '2']
                 result = subprocess.run(
                     [sys.executable, str(VISUALS / 'apply.py'), '--project',
-                     str(project), option, name, *extra], capture_output=True, text=True)
+                     str(project), option, name, *extra], capture_output=True, text=True, encoding='utf-8', errors='replace')
                 self.assertEqual(result.returncode, 0, result.stderr)
                 # Pasted rows need sceneId for sounds and layer order.
                 rows = json.loads(result.stdout[result.stdout.index('['):])
                 self.assertEqual({row['sceneId'] for row in rows}, {f'{prefix}-{suffix}'})
                 for number in (1, 3):
-                    self.assertEqual((scenes / f'{prefix}-{number:02d}-{suffix}.html').read_text(),
+                    self.assertEqual((scenes / f'{prefix}-{number:02d}-{suffix}.html').read_text(encoding='utf-8'),
                                      'PERSONAL EDIT')
                 self.assertEqual(len(list(scenes.glob('*.html'))), 4)
 
     def test_catalog_scenes_are_bundled(self):
-        scenes = json.loads((VISUALS / 'catalog.json').read_text())['scenes']
+        scenes = json.loads((VISUALS / 'catalog.json').read_text(encoding='utf-8'))['scenes']
         self.assertGreater(len(scenes), 100)
         self.assertEqual(len({c['id'] for c in scenes}), len(scenes))
         for scene in scenes:
@@ -151,36 +152,36 @@ class EngineTests(unittest.TestCase):
             project = home / 'project with spaces'
             result = subprocess.run(
                 [sys.executable, str(ENGINE / 'project-template/build.py'),
-                 'new', str(project)], capture_output=True, text=True)
+                 'new', str(project)], capture_output=True, text=True, encoding='utf-8', errors='replace')
             self.assertEqual(result.returncode, 0, result.stderr)
-            cfg = json.loads((project / 'project.json').read_text())
+            cfg = json.loads((project / 'project.json').read_text(encoding='utf-8'))
             self.assertEqual(Path(cfg['skill']), ENGINE)
             result = subprocess.run(
                 [sys.executable, str(VISUALS / 'apply.py'), '--project',
                  str(project), '--transition', 'glow', '--cuts', '1'],
-                env=dict(os.environ, HOME=str(home)), capture_output=True, text=True)
+                env=dict(os.environ, HOME=str(home)), capture_output=True, text=True, encoding='utf-8', errors='replace')
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertTrue((project / 'compositions/scenes/transition-01-glow.html').is_file())
             result = subprocess.run(
                 [sys.executable, str(VISUALS / 'apply.py'), '--project',
                  str(project), '--use', 'transition-glow', '--cut', '1'],
-                env=dict(os.environ, HOME=str(home)), capture_output=True, text=True)
+                env=dict(os.environ, HOME=str(home)), capture_output=True, text=True, encoding='utf-8', errors='replace')
             self.assertEqual(result.returncode, 0, result.stderr)
             result = subprocess.run(
                 [sys.executable, str(VISUALS / 'apply.py'), '--project',
                  str(project), '--use', 'object-card', '--cut', '1'],
-                env=dict(os.environ, HOME=str(home)), capture_output=True, text=True)
+                env=dict(os.environ, HOME=str(home)), capture_output=True, text=True, encoding='utf-8', errors='replace')
             self.assertNotEqual(result.returncode, 0)   # Centered on 1 s, a 4.5 s scene would start before the video.
             self.assertIn('before the video', result.stderr)
-            cfg = json.loads((project / 'project.json').read_text())
+            cfg = json.loads((project / 'project.json').read_text(encoding='utf-8'))
             self.assertEqual(len(cfg['scenes']), 1)
 
     def test_command_reference_lists_every_helper(self):
-        text = (ENGINE / 'references/commands.md').read_text()
+        text = (ENGINE / 'references/commands.md').read_text(encoding='utf-8')
         commands = set(re.findall(r'^- `([a-z_]+\.py)`$', text, re.M))
         library = set(re.findall(r'`([a-z_]+\.py)`', text.split('These modules have no command line')[1]))
         for path in (ENGINE / 'helpers').glob('*.py'):
-            runnable = re.search(r"__name__ == ['\"]__main__['\"]", path.read_text()) is not None
+            runnable = re.search(r"__name__ == ['\"]__main__['\"]", path.read_text(encoding='utf-8')) is not None
             with self.subTest(helper=path.name):
                 self.assertIn(path.name, commands if runnable else library)
 
@@ -193,7 +194,7 @@ class EngineTests(unittest.TestCase):
             src, dst = Path(tmp) / 'cut.mp4', Path(tmp) / 'assets/cut.mp4'
             src.write_bytes(b'cut')
             dst.parent.mkdir()
-            dst.symlink_to(Path(tmp) / 'missing.mp4')
+            make_link(self, dst, Path(tmp) / 'missing.mp4')
             build.copy_video(str(src), str(dst))
             self.assertFalse(dst.is_symlink())
             self.assertEqual(dst.read_bytes(), b'cut')
@@ -236,7 +237,7 @@ class EngineTests(unittest.TestCase):
             self.assertLess(float(audio['duration']), 10.1)
 
     def test_project_config_points_at_hyperframes_hosts(self):
-        config = json.loads((ENGINE / 'project-template/hyperframes.json').read_text())
+        config = json.loads((ENGINE / 'project-template/hyperframes.json').read_text(encoding='utf-8'))
         self.assertEqual(config['$schema'], 'https://hyperframes.heygen.com/schema/hyperframes.json')
         self.assertEqual(config['registry'], 'https://raw.githubusercontent.com/heygen-com/hyperframes/main/registry')
 
@@ -245,14 +246,14 @@ class EngineTests(unittest.TestCase):
         import apply
         outside = lambda html: set(re.findall(r'(?<![\w-])id="([^"]+)"', re.sub(r'<script\b.*?</script>', '', html, flags=re.S))) - {'root'}
         for scene in apply.catalog():
-            source = (VISUALS / 'scenes' / (scene + '.html')).read_text()
+            source = (VISUALS / 'scenes' / (scene + '.html')).read_text(encoding='utf-8')
             copies = []
             for new in (scene + '-01', scene + '-02'):
                 copies.append(apply.replace_id(source, scene, new))
                 with self.subTest(copy=new):
                     self.assertEqual(apply.check_ids(copies[-1], new, '_' + re.sub(r'[^a-z0-9]', '', new)), [])
             self.assertFalse(outside(copies[0]) & outside(copies[1]), scene)
-        copy = apply.replace_id((VISUALS / 'scenes/three-steps.html').read_text(), 'three-steps', 'three-steps-01')
+        copy = apply.replace_id((VISUALS / 'scenes/three-steps.html').read_text(encoding='utf-8'), 'three-steps', 'three-steps-01')
         self.assertIn('id="c3_threesteps01-p1"', copy)
         self.assertIn('T.fromTo("#c3_threesteps01-p" + n,', copy)
         # A family renamed at the end of the ID no longer matches "#c3-p" + n.
@@ -265,13 +266,13 @@ class EngineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             project, edit = Path(tmp) / 'project', Path(tmp) / 'edit'
             project.mkdir(); edit.mkdir()
-            (project / 'project.json').write_text('{}')
-            (edit / 'cut_timeline.json').write_text('{"duration": 8.733}')
+            (project / 'project.json').write_text('{}', encoding='utf-8')
+            (edit / 'cut_timeline.json').write_text('{"duration": 8.733}', encoding='utf-8')
             with mock.patch.object(apply, 'copy_assets', return_value=0), contextlib.redirect_stdout(io.StringIO()), warnings.catch_warnings():
                 warnings.simplefilter('ignore', ResourceWarning)
                 apply.use_scene(str(project), 'three-steps', 3.5, 8.733)
                 apply.use_scene(str(project), 'three-steps', 0, 6)
-            held, plain = ((project / f'compositions/scenes/three-steps-{n}.html').read_text() for n in ('01', '02'))
+            held, plain = ((project / f'compositions/scenes/three-steps-{n}.html').read_text(encoding='utf-8') for n in ('01', '02'))
         # The exit fades start 0.36 s before the 6 s source end (0.46 s in step-by-step); the hold drops them only while the scene reaches the end.
         self.assertIn('if (typeof C.end === "number" && C.end >= 8.733 - .3) tl.getChildren(false, true, false).forEach(function (t) { if (t.startTime() >= 5.5 && t.vars.opacity === 0) t.kill(); });', held)
         self.assertIn('tl.tweenFromTo(0, 6.0, { duration: 5.233,', held)

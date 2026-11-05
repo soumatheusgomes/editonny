@@ -110,4 +110,4 @@ The development server binds only to `localhost` (loopback; Next.js 16.4 loops o
 
 ## Platform limits
 
-The current environment is macOS Apple Silicon. Windows and Linux require their own validation. Windows directory links may require Developer Mode or elevated local permissions; failures must be reported rather than silently creating a second engine copy. Model downloads, long recordings, and optional external generation require separate verification on the actual machine.
+Validated environments are macOS Apple Silicon and Windows 11 (x64); see [validation](validation.md) for what each run covered. Linux requires its own validation. On Windows, `python3` is usually only a Microsoft Store stub: run the commands with `python` or `py -3`. The installer registers agents with a symlink and, when Windows refuses symlinks without Developer Mode or administrator rights, with a directory junction to the same single copy; it never creates a second engine copy. Model downloads, long recordings, and optional external generation require separate verification on the actual machine.

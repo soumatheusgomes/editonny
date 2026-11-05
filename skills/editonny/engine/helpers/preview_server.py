@@ -218,7 +218,8 @@ class Session:
                 return self._last_good.get(key)
         return None
 
-    def file_info(self, rel: str) -> dict | None:
+    def file_info(self, rel: str, fresh: bool = False) -> dict | None:
+        """`fresh` rehashes the bytes; Windows st_ctime is creation time, so the key misses rewrites."""
         path = self.safe_path(rel)
         if path is None or not path.is_file():
             return None
@@ -226,7 +227,7 @@ class Session:
         key = (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns)
         with self.lock_for('identity:' + str(path)):
             cached = self._identities.get(str(path))
-            if not cached or cached[0] != key:
+            if fresh or not cached or cached[0] != key:
                 cached = (key, content_hash(path))
                 self._identities[str(path)] = cached
         return {"mtime": st.st_mtime, "size": st.st_size, 'sha256': cached[1], 'dependencies_hash': preview_dependencies_hash(self.edit_dir),
@@ -920,7 +921,7 @@ class Handler(BaseHTTPRequestHandler):
                 expected_file = state.get('cut_video', 'cut.mp4') if record['phase'] == 'cut' else state.get('final_video')
                 if expected_file and record['file'] != expected_file:
                     return self._error(409, 'Displayed media was superseded; wait for the current candidate before approving')
-                current = self.session.file_info(record["file"])
+                current = self.session.file_info(record["file"], fresh=True)
                 if (not current or abs(current["mtime"] - record["file_mtime"]) > 0.01
                         or current["size"] != record["file_size"] or current['sha256'] != record['file_sha256']
                         or current['dependencies_hash'] != record['dependencies_hash']):

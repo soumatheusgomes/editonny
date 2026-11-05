@@ -170,7 +170,7 @@ def verify_media(candidate: Path, project: Path, reference: dict | None = None) 
         base_facts = probe_video(base)
         def audio_hash(path):
             process = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(path), '-map', '0:a', '-c:a', 'copy',
-                                      '-f', 'hash', '-hash', 'sha256', '-'], capture_output=True, text=True, timeout=600)
+                                      '-f', 'hash', '-hash', 'sha256', '-'], capture_output=True, text=True, timeout=600, encoding='utf-8', errors='replace')
             if process.returncode:
                 raise ValueError('Could not verify preserved audio stream bytes: ' + process.stderr[-300:])
             return process.stdout.strip()
@@ -185,7 +185,7 @@ def verify_media(candidate: Path, project: Path, reference: dict | None = None) 
     if video['timing'] == 'cfr':
         check('frameRate', Fraction(facts['fps_str']) == Fraction(video['frameRate']), facts['fps_str'])
     decode = subprocess.run(['ffmpeg', '-v', 'error', '-xerror', '-i', str(candidate), '-map', '0:v:0', '-map', '0:a?',
-                             '-f', 'null', '-'], capture_output=True, text=True, timeout=600)
+                             '-f', 'null', '-'], capture_output=True, text=True, timeout=600, encoding='utf-8', errors='replace')
     check('completeDecode', decode.returncode == 0, decode.stderr[-500:])
     expected = plan_media([s['facts'] for s in manifest['sources']], config, None, 'delivery')
     check('colorMetadata', all(expected.get(k) in UNKNOWN or facts.get(k) == expected[k] for k in COLOR_FIELDS),
@@ -310,7 +310,7 @@ def probe_media_route() -> dict:
         video = Path(tmp) / 'probe.mp4'
         result = subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'color=gray:s=64x64:r=24:d=0.1',
                                  '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-color_range', 'tv', '-colorspace', 'bt709', str(video)],
-                                capture_output=True, text=True, timeout=30)
+                                capture_output=True, text=True, timeout=30, encoding='utf-8', errors='replace')
         facts = probe_video(video) if result.returncode == 0 else {}
         return {'status': 'passed' if facts.get('color_space') == 'bt709' and facts.get('color_range') == 'tv' else 'failed',
                 'scope': 'Short SDR encode/probe only; not HDR, overlay, playback or universal fidelity certification', 'actual': facts}

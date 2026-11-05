@@ -31,13 +31,13 @@ class EditingScopeTests(unittest.TestCase):
                     edl = project.parent / 'edit/edl.json'
                     edl.write_text(json.dumps({'sources': {'s': str(source)}, 'contractHash': project_contract.settings_hash(c),
                         'ranges': [{'id': 'a', 'source': 's', 'start': 0, 'end': 3},
-                                   {'id': 'b', 'source': 's', 'start': 5, 'end': 7}]}))
+                                   {'id': 'b', 'source': 's', 'start': 5, 'end': 7}]}), encoding='utf-8')
                     command = [sys.executable, str(ROOT / 'skills/editonny/engine/helpers/render_cut.py'), str(edl)]
-                    result = subprocess.run(command, capture_output=True, text=True)
+                    result = subprocess.run(command, capture_output=True, text=True, encoding='utf-8', errors='replace')
                     self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
                     self.assertIn('protected', result.stderr)
                     self.assertFalse((edl.parent / 'cut.mp4').exists())
-                    result = subprocess.run([*command, '--no-jcut'], capture_output=True, text=True)
+                    result = subprocess.run([*command, '--no-jcut'], capture_output=True, text=True, encoding='utf-8', errors='replace')
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_interval_render_keeps_the_parent_before_and_after_the_requested_window(self):
@@ -54,10 +54,10 @@ class EditingScopeTests(unittest.TestCase):
             project = create_workspace(root / 'downloads', 'Scope', manifest, c, confirmation(c, manifest))
             edl = {'sources': {'s': str(source)}, 'contractHash': project_contract.settings_hash(c),
                    'ranges': [{'id': 'a', 'source': 's', 'start': 0, 'end': 10}]}
-            (project.parent / 'edit/edl.json').write_text(json.dumps(edl))
+            (project.parent / 'edit/edl.json').write_text(json.dumps(edl), encoding='utf-8')
             def render(project):
                 result = subprocess.run([sys.executable, str(ROOT / 'skills/editonny/engine/helpers/render_cut.py'),
-                    str(project.parent / 'edit/edl.json'), '--no-jcut'], capture_output=True, text=True)
+                    str(project.parent / 'edit/edl.json'), '--no-jcut'], capture_output=True, text=True, encoding='utf-8', errors='replace')
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             render(project)
             child = revise_workspace(project, {'workflow': {'editing': {'intervals': [
@@ -69,13 +69,13 @@ class EditingScopeTests(unittest.TestCase):
             edl.update(contractHash=project_contract.settings_hash(changed), ranges=[
                 {'id': 'a', 'source': 's', 'start': 0, 'end': 1.4},
                 {'id': 'b', 'source': 's', 'start': 1.6, 'end': 10}])
-            (child.parent / 'edit/edl.json').write_text(json.dumps(edl))
+            (child.parent / 'edit/edl.json').write_text(json.dumps(edl), encoding='utf-8')
             render(child)
-            timeline = json.loads((child.parent / 'edit/cut_timeline.json').read_text())
+            timeline = json.loads((child.parent / 'edit/cut_timeline.json').read_text(encoding='utf-8'))
             self.assertGreater(timeline['duration'], 9)
             self.assertAlmostEqual(timeline['segments'][0]['src_start'], 0, delta=1 / 24)
             self.assertAlmostEqual(timeline['segments'][-1]['src_end'], 10, delta=1 / 24)
-            self.assertEqual(json.loads((project.parent / 'edit/edl.json').read_text())['ranges'][0]['end'], 10)
+            self.assertEqual(json.loads((project.parent / 'edit/edl.json').read_text(encoding='utf-8'))['ranges'][0]['end'], 10)
 
     def test_protected_interval_cannot_be_removed_by_edl(self):
         self.assertTrue(hasattr(project_contract, 'validate_edl_scope'), 'EDL does not enforce protected scope')

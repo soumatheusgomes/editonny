@@ -64,7 +64,7 @@ def request_download(paths: list[Path]) -> bool:
     ok = False
     for p in paths:
         try:
-            r = subprocess.run([brctl, "download", str(p)], capture_output=True, text=True, timeout=30)
+            r = subprocess.run([brctl, "download", str(p)], capture_output=True, text=True, timeout=30, encoding='utf-8', errors='replace')
             ok |= r.returncode == 0
         except (OSError, subprocess.SubprocessError):
             pass
@@ -112,4 +112,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     raise SystemExit(main())

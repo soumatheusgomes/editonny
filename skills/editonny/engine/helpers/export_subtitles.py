@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import html
 import math
+import sys
 from pathlib import Path
 
 from project_contract import read_json, managed_config
@@ -58,6 +59,9 @@ def export_subtitles(project: Path, format_name: str, output: Path) -> Path:
 
 
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project', type=Path, required=True)
     parser.add_argument('--format', choices=['srt', 'vtt'], required=True)

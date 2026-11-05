@@ -27,7 +27,7 @@ def main():
     a = ap.parse_args()
     (src, out) = (a.input_file, a.output)
     q = a.sheet or os.path.splitext(out)[0] + '_sheet.jpg'
-    pr = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', src], capture_output=True, text=True)
+    pr = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', src], capture_output=True, text=True, encoding='utf-8', errors='replace')
     if pr.returncode != 0:
         sys.exit(f'error: could not read {src}')
     (W, H) = map(int, pr.stdout.strip().split(','))
@@ -147,4 +147,7 @@ def main():
     sheet.save(q, quality=88)
     print(f'ok {out}: {n} frames ({n / 30:.2f} s), {LW}x{LH} · sheet {q}')
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     main()

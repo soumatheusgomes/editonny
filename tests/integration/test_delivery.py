@@ -12,6 +12,7 @@ from media_fixtures import make_patches
 from intake import inspect_sources, propose_settings
 from workflow_fixtures import confirmation
 from workspace import create_workspace, publish_export, record_review, render_dependencies, revise_workspace
+from workflow_fixtures import make_link
 
 
 class DeliveryTests(unittest.TestCase):
@@ -24,7 +25,7 @@ class DeliveryTests(unittest.TestCase):
                 {'out_start': i / 216, 'out_end': (i + 1) / 216, 'src_start': 0,
                  'source_path': str(source)} for i in range(9)]}
             timeline['segments'][-1]['source_path'] = str(Path(tmp) / 'outside.mp4')
-            (project.parent / 'edit/cut_timeline.json').write_text(json.dumps(timeline))
+            (project.parent / 'edit/cut_timeline.json').write_text(json.dumps(timeline), encoding='utf-8')
             record_review(project, source, {'reviewer': 'agent', 'notes': 'Complete one-frame sample inspected',
                 'findings': [], 'intervals': [[0, 1 / 24]], 'artifactHash': content_hash(source),
                 'dependencies': render_dependencies(project)})
@@ -43,10 +44,10 @@ class DeliveryTests(unittest.TestCase):
             extras = ({'transitions': [{'type': 'flash', 'at': 0}]}, {'hook': {'text': 'Extra title'}},
                       {'motion': [{'template': 'label', 'start': 0}]}, {'edit_type': 'greenScreen', 'greenScreen': {}})
             for extra in extras:
-                data.write_text(json.dumps({**base, **extra}))
+                data.write_text(json.dumps({**base, **extra}), encoding='utf-8')
                 with self.subTest(extra=extra), self.assertRaisesRegex(ComposeError, 'confirmed'):
                     build_plan(data, str(edit / 'candidate.mp4'), False)
-            data.write_text(json.dumps({**base, 'motion': {'enabled': False, 'items': []}, 'hook': {'enabled': False}}))
+            data.write_text(json.dumps({**base, 'motion': {'enabled': False, 'items': []}, 'hook': {'enabled': False}}), encoding='utf-8')
             build_plan(data, str(edit / 'candidate.mp4'), False)
 
     def test_managed_cut_cannot_replace_unused_original_or_previous_export(self):
@@ -60,12 +61,12 @@ class DeliveryTests(unittest.TestCase):
             project = create_workspace(root / 'downloads', 'Sources', inspection, config, confirmation(config, inspection))
             edit = project.parent / 'edit'; edl = edit / 'edl.json'
             edl.write_text(json.dumps({'sources': {'a': str(first)}, 'contractHash': settings_hash(config),
-                'ranges': [{'id': 'a', 'source': 'a', 'start': 0, 'end': 1 / 24}]}))
+                'ranges': [{'id': 'a', 'source': 'a', 'start': 0, 'end': 1 / 24}]}), encoding='utf-8')
             previous = project.parents[2] / 'exports/previous.mp4'; previous.write_bytes(b'previous export')
             for destination in (second, previous):
                 before = content_hash(destination)
                 result = subprocess.run([sys.executable, str(ROOT / 'skills/editonny/engine/helpers/render_cut.py'),
-                    str(edl), '--no-jcut', '--output', str(destination)], capture_output=True, text=True)
+                    str(edl), '--no-jcut', '--output', str(destination)], capture_output=True, text=True, encoding='utf-8', errors='replace')
                 self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertEqual(content_hash(destination), before)
 
@@ -77,7 +78,7 @@ class DeliveryTests(unittest.TestCase):
             edit = project.parent / 'edit'
             data = edit / 'edit_data.json'
             data.write_text(json.dumps({'base': str(source), 'contractHash': settings_hash(load_contract(project)),
-                'captions': {'enabled': False}, 'sfx': {'enabled': True, 'events': [{'name': 'pop', 'at': 0}]}}))
+                'captions': {'enabled': False}, 'sfx': {'enabled': True, 'events': [{'name': 'pop', 'at': 0}]}}), encoding='utf-8')
             with self.assertRaisesRegex(ComposeError, 'effects.*confirmed'):
                 build_plan(data, str(edit / 'candidate.mp4'), False)
 
@@ -92,7 +93,7 @@ class DeliveryTests(unittest.TestCase):
             (edit / 'cut_timeline.json').unlink()
             seed_source(project)
             data = edit / 'edit_data.json'
-            data.write_text(json.dumps({'contractHash': settings_hash(load_contract(project)), 'captions': {'enabled': False}}))
+            data.write_text(json.dumps({'contractHash': settings_hash(load_contract(project)), 'captions': {'enabled': False}}), encoding='utf-8')
             before = source.read_bytes()
             with self.assertRaisesRegex(ComposeError, 'original|input media'):
                 build_plan(data, str(source), False)
@@ -162,7 +163,7 @@ class DeliveryTests(unittest.TestCase):
             project = create_workspace(root / 'downloads', 'Chroma', inspection, c, confirmation(c, inspection))
             edit = project.parent / 'edit'
             (edit / 'cut_timeline.json').write_text(json.dumps({'duration': 1 / 24, 'fps_str': '24', 'segments': [
-                {'out_start': 0, 'out_end': 1 / 24, 'src_start': 0, 'src_end': 1 / 24, 'source_path': str(source)}]}))
+                {'out_start': 0, 'out_end': 1 / 24, 'src_start': 0, 'src_end': 1 / 24, 'source_path': str(source)}]}), encoding='utf-8')
             record_review(project, source, {'reviewer': 'agent', 'notes': 'Complete 4:4:4 source reviewed', 'findings': [],
                 'intervals': [[0, 1 / 24]], 'artifactHash': content_hash(source), 'dependencies': render_dependencies(project)})
             report = verify_media(original, project)
@@ -174,7 +175,7 @@ class DeliveryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); source, project = self.prepare(root)
             outside = root / 'outside'; outside.mkdir()
-            exports = project.parents[2] / 'exports'; exports.rmdir(); exports.symlink_to(outside, target_is_directory=True)
+            exports = project.parents[2] / 'exports'; exports.rmdir(); make_link(self, exports, outside, directory=True)
             with self.assertRaisesRegex(ValueError, 'symlink|destination|layout'):
                 publish_export(project, source, verify_media(source, project))
             self.assertEqual(list(outside.iterdir()), [])
@@ -184,7 +185,7 @@ class DeliveryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); source, project = self.prepare(root)
             outside = root / 'outside'; outside.mkdir()
-            (project.parent / 'edit/deliveries').symlink_to(outside, target_is_directory=True)
+            make_link(self, (project.parent / 'edit/deliveries'), outside, directory=True)
             with self.assertRaisesRegex(ValueError, 'symlink|destination|layout'):
                 publish_export(project, source, verify_media(source, project))
             self.assertEqual(list(outside.iterdir()), [])
@@ -195,7 +196,7 @@ class DeliveryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); source, project = self.prepare(root)
             edit = project.parent / 'edit'; outside = root / 'outside-edit'
-            edit.rename(outside); edit.symlink_to(outside, target_is_directory=True)
+            edit.rename(outside); make_link(self, edit, outside, directory=True)
             report = verify_media(source, project)
             self.assertEqual(report['status'], 'passed', report)
             with self.assertRaisesRegex(ValueError, 'symlink|destination|layout'):
@@ -212,14 +213,14 @@ class DeliveryTests(unittest.TestCase):
             source, project = self.prepare(Path(tmp))
             config = load_contract(project)
             config['workflow']['delivery']['subtitleFormats'] = ['srt']
-            (project / 'project.json').write_text(json.dumps(config))
+            (project / 'project.json').write_text(json.dumps(config), encoding='utf-8')
             inspection = inspect_sources([source], False)
             record_confirmation(project, confirmation(config, inspection))
             from common import content_hash
             record_review(project, source, {'reviewer': 'agent', 'notes': 'Complete synthetic fixture reviewed', 'findings': [],
                 'intervals': [[0, 1 / 24]], 'artifactHash': content_hash(source), 'dependencies': render_dependencies(project)})
             def fail_subtitles(project, fmt, destination):
-                destination.write_text('partial subtitle')
+                destination.write_text('partial subtitle', encoding='utf-8')
                 raise ValueError('Interrupted subtitle generation')
             with patch('export_subtitles.export_subtitles', side_effect=fail_subtitles):
                 with self.assertRaisesRegex(ValueError, 'Interrupted subtitle'):
@@ -263,10 +264,10 @@ class DeliveryTests(unittest.TestCase):
             source, project = self.prepare(Path(tmp))
             edit = project.parent / 'edit'; edl = edit / 'edl.json'
             edl.write_text(json.dumps({'sources': {'s': str(source)}, 'contractHash': settings_hash(load_contract(project)),
-                'ranges': [{'id': 'a', 'source': 's', 'start': 0, 'end': 1 / 24}]}))
+                'ranges': [{'id': 'a', 'source': 's', 'start': 0, 'end': 1 / 24}]}), encoding='utf-8')
             with revision_lock(project):
                 result = subprocess.run([sys.executable, str(ROOT / 'skills/editonny/engine/helpers/render_cut.py'),
-                    str(edl), '--no-jcut'], capture_output=True, text=True)
+                    str(edl), '--no-jcut'], capture_output=True, text=True, encoding='utf-8', errors='replace')
             self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertFalse((edit / 'cut.mp4').exists())
 
@@ -276,7 +277,7 @@ class DeliveryTests(unittest.TestCase):
         config = propose_settings(inspection, {'captions': False, 'delivery': {'workspaceRoot': str(root / 'downloads')}})['config']
         project = create_workspace(root / 'downloads', 'Test', inspection, config, confirmation(config, inspection))
         (project.parent / 'edit/cut_timeline.json').write_text(json.dumps({'duration': 1 / 24, 'fps_str': '24',
-            'segments': [{'out_start': 0, 'out_end': 1 / 24, 'src_start': 0, 'src_end': 1 / 24, 'source_path': str(source)}]}))
+            'segments': [{'out_start': 0, 'out_end': 1 / 24, 'src_start': 0, 'src_end': 1 / 24, 'source_path': str(source)}]}), encoding='utf-8')
         from common import content_hash
         record_review(project, source, {'reviewer': 'agent', 'notes': 'Inspected complete synthetic one-frame reference',
                       'findings': [], 'intervals': [[0, 1 / 24]], 'artifactHash': content_hash(source), 'dependencies': render_dependencies(project)})

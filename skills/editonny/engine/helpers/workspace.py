@@ -162,7 +162,7 @@ def create_workspace(parent: Path, title: str, inspection: dict, config: dict, c
         project = revision / 'project'
         engine = Path(__file__).resolve().parents[1]
         result = subprocess.run([sys.executable, str(engine / 'project-template/build.py'),
-                                 'new', str(project), '--edit', str(edit)], capture_output=True, text=True)
+                                 'new', str(project), '--edit', str(edit)], capture_output=True, text=True, encoding='utf-8', errors='replace')
         if result.returncode:
             raise ValueError(result.stderr.strip() or result.stdout.strip() or 'Project initialization failed')
         template = read_json(project / 'project.json')

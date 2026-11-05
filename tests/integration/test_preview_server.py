@@ -20,7 +20,7 @@ class PreviewServerTests(unittest.TestCase):
         approval = {'phase': 'cut', 'file': 'cut.mp4', 'file_mtime': info['mtime'], 'file_size': info['size'],
                     'file_sha256': info['sha256'], 'dependencies_hash': info['dependencies_hash']}
         self.assertIsNone(stale_approval_note(self.session.edit_dir, approval))
-        (self.session.edit_dir / 'edit_data.json').write_text('{"captions":{"enabled":false}}')
+        (self.session.edit_dir / 'edit_data.json').write_text('{"captions":{"enabled":false}}', encoding='utf-8')
         self.assertIsNotNone(stale_approval_note(self.session.edit_dir, approval))
 
     def test_managed_preview_tracks_actual_asset_bytes(self):
@@ -73,10 +73,10 @@ class PreviewServerTests(unittest.TestCase):
                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             try:
                 for _ in range(100):
-                    if info_path.is_file() and json.loads(info_path.read_text()).get('status') == 'running':
+                    if info_path.is_file() and json.loads(info_path.read_text(encoding='utf-8')).get('status') == 'running':
                         break
                     time.sleep(0.1)
-                info = json.loads(info_path.read_text())
+                info = json.loads(info_path.read_text(encoding='utf-8'))
                 self.assertNotEqual(info['port'], 0)
                 self.assertTrue(info['url'].endswith(f":{info['port']}"))
                 with urllib.request.urlopen(info['url'], timeout=5) as response:
@@ -96,7 +96,7 @@ class PreviewServerTests(unittest.TestCase):
     def test_project_documents_cannot_execute_on_the_preview_origin(self):
         for name, content in [('downloaded.html', '<script>window.executed=true</script>'),
                               ('active.svg', '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>')]:
-            (self.session.edit_dir / name).write_text(content)
+            (self.session.edit_dir / name).write_text(content, encoding='utf-8')
             for request_headers in ({}, {'Range': 'bytes=0-9'}):
                 with self.subTest(name=name, headers=request_headers):
                     code, headers, _ = self.request('/media/' + name, headers=request_headers)

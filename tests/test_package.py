@@ -4,6 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 import zipfile
+from workflow_fixtures import make_link
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('package', ROOT / 'scripts/package.py')
@@ -13,10 +14,10 @@ spec.loader.exec_module(package)
 
 class PackageTests(unittest.TestCase):
     def test_plugin_release_metadata_matches_the_portable_skill(self):
-        version = (ROOT / 'skills/editonny/VERSION').read_text().strip()
+        version = (ROOT / 'skills/editonny/VERSION').read_text(encoding='utf-8').strip()
         for name in ('.codex-plugin/plugin.json', '.claude-plugin/plugin.json'):
-            self.assertEqual(json.loads((ROOT / name).read_text())['version'], version, name)
-        marketplace = json.loads((ROOT / '.claude-plugin/marketplace.json').read_text())
+            self.assertEqual(json.loads((ROOT / name).read_text(encoding='utf-8'))['version'], version, name)
+        marketplace = json.loads((ROOT / '.claude-plugin/marketplace.json').read_text(encoding='utf-8'))
         self.assertEqual(marketplace['plugins'][0]['version'], version)
 
     def test_packages_reject_symlinked_source_roots(self):
@@ -25,9 +26,9 @@ class PackageTests(unittest.TestCase):
             root, outside = base / 'project', base / 'private'
             root.mkdir()
             (outside / 'editonny').mkdir(parents=True)
-            (outside / 'editonny/VERSION').write_text('1.0.0')
-            (outside / 'private-notes.txt').write_text('Private content must stay outside the package')
-            (root / 'skills').symlink_to(outside, target_is_directory=True)
+            (outside / 'editonny/VERSION').write_text('1.0.0', encoding='utf-8')
+            (outside / 'private-notes.txt').write_text('Private content must stay outside the package', encoding='utf-8')
+            make_link(self, (root / 'skills'), outside, directory=True)
             with self.assertRaisesRegex(ValueError, 'symlink'):
                 package.build(root, root / 'dist', 'plugin')
             self.assertFalse(list((root / 'dist').glob('*.zip')))
@@ -37,13 +38,13 @@ class PackageTests(unittest.TestCase):
             root = Path(temporary) / 'project'
             source = root / 'skills/editonny'
             source.mkdir(parents=True)
-            (source / 'VERSION').write_text('1.0.0')
+            (source / 'VERSION').write_text('1.0.0', encoding='utf-8')
             outside = Path(temporary) / 'private'
             outside.mkdir()
-            (outside / 'note.txt').write_text('Must not enter the public package')
+            (outside / 'note.txt').write_text('Must not enter the public package', encoding='utf-8')
             assets = root / 'docs/assets'
             assets.mkdir(parents=True)
-            (assets / 'readme').symlink_to(outside, target_is_directory=True)
+            make_link(self, (assets / 'readme'), outside, directory=True)
             with self.assertRaisesRegex(ValueError, 'symlink'):
                 package.build(root, root / 'dist', 'plugin')
             self.assertFalse(list((root / 'dist').glob('*.zip')))
@@ -52,7 +53,7 @@ class PackageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='editonny package kinds ') as temp:
             root = Path(temp)
             (root / 'skills/editonny').mkdir(parents=True)
-            (root / 'skills/editonny/VERSION').write_text('1.0.0')
+            (root / 'skills/editonny/VERSION').write_text('1.0.0', encoding='utf-8')
             with self.assertRaisesRegex(ValueError, 'plugin'):
                 package.build(root, root / 'dist', 'site')
 
@@ -65,7 +66,7 @@ class PackageTests(unittest.TestCase):
             root = Path(temp)
             source = root / 'skills/editonny'
             source.mkdir(parents=True)
-            (source / 'VERSION').write_text('1.0.0')
+            (source / 'VERSION').write_text('1.0.0', encoding='utf-8')
             included = ['skills/editonny/SKILL.md', 'skills/editonny/engine/main.py', 'skills/editonny/.env.example',
                         '.codex-plugin/plugin.json', '.claude-plugin/plugin.json',
                         '.agents/plugins/marketplace.json', 'docs/assets/readme/hero.svg']
@@ -75,7 +76,7 @@ class PackageTests(unittest.TestCase):
             for name in included + rejected:
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text('fixture')
+                path.write_text('fixture', encoding='utf-8')
             with zipfile.ZipFile(package.build(root, root / 'dist', 'plugin')) as archive:
                 self.assertEqual(set(archive.namelist()), {*included, 'skills/editonny/VERSION'})
 
@@ -95,7 +96,7 @@ class PackageTests(unittest.TestCase):
                          'docs/assets/readme/.env', 'docs/assets/private.txt']:
                 p = root / name
                 p.parent.mkdir(parents=True, exist_ok=True)
-                p.write_text('1.0.0' if p.name == 'VERSION' else 'fixture')
+                p.write_text('1.0.0' if p.name == 'VERSION' else 'fixture', encoding='utf-8')
             plugin = package.build(root, root / 'dist', 'plugin')
             with zipfile.ZipFile(plugin) as archive:
                 self.assertIn('skills/editonny/SKILL.md', archive.namelist())

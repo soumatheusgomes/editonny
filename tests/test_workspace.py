@@ -90,7 +90,7 @@ class WorkspaceTests(unittest.TestCase):
             from project_contract import read_json
             path = variant / 'project.json'; changed = read_json(path)
             changed['workflow']['audio']['denoise'] = 'strong'
-            path.write_text(json.dumps(changed))
+            path.write_text(json.dumps(changed), encoding='utf-8')
             self.assertEqual(self.w.read_status(variant)['confirmation'], 'required')
 
     def test_recovery_does_not_remove_a_live_lock(self):
@@ -99,7 +99,7 @@ class WorkspaceTests(unittest.TestCase):
             root = Path(temp); inspection = self.prepare(root); c = config(root / 'downloads')
             project = self.w.create_workspace(root / 'downloads', 'Lock', inspection, c, confirmation(c, inspection))
             lock = project.parent / 'edit/.workflow.lock'
-            lock.write_text(json.dumps({'pid': os.getpid(), 'token': 'owned'}))
+            lock.write_text(json.dumps({'pid': os.getpid(), 'token': 'owned'}), encoding='utf-8')
             with self.assertRaises(ValueError):
                 self.w.recover_revision(project)
             self.assertTrue(lock.exists())
@@ -111,7 +111,7 @@ class WorkspaceTests(unittest.TestCase):
             root = Path(temp); inspection = self.prepare(root); c = config(root / 'downloads')
             project = self.w.create_workspace(root / 'downloads', 'Lock', inspection, c, confirmation(c, inspection))
             lock = project.parent / 'edit/.workflow.lock'
-            lock.write_text(json.dumps({'pid': 123, 'token': 'owned'}))
+            lock.write_text(json.dumps({'pid': 123, 'token': 'owned'}), encoding='utf-8')
             kill = Mock()
             with patch.object(self.w, 'os', SimpleNamespace(name='nt', kill=kill)):
                 with self.assertRaisesRegex(ValueError, 'POSIX|Windows'):
@@ -132,8 +132,8 @@ class WorkspaceTests(unittest.TestCase):
             root = Path(temp); inspection = self.prepare(root); c = config(root / 'downloads')
             project = self.w.create_workspace(root / 'downloads', 'Assets', inspection, c, confirmation(c, inspection))
             before = self.w.render_dependencies(project)
-            (project / 'assets/logo.txt').write_text('changed scene asset')
-            (project.parent / 'edit/edit_data.json').write_text('{"hook": {"text": "new hook"}}')
+            (project / 'assets/logo.txt').write_text('changed scene asset', encoding='utf-8')
+            (project.parent / 'edit/edit_data.json').write_text('{"hook": {"text": "new hook"}}', encoding='utf-8')
             self.assertNotEqual(before, self.w.render_dependencies(project))
 
 

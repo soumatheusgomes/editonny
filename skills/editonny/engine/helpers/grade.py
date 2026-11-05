@@ -138,7 +138,7 @@ def check_filter(filter_str: str) -> str | None:
     proc = subprocess.run(
         ["ffmpeg", "-v", "error", "-nostdin", "-f", "lavfi", "-i", "testsrc2=s=64x64:d=0.1:r=10",
          "-vf", graded_chain(filter_str), "-f", "null", "-"],
-        capture_output=True, text=True)
+        capture_output=True, text=True, encoding='utf-8', errors='replace')
     if proc.returncode != 0:
         lines = [ln.split("] ", 1)[-1] for ln in (proc.stderr or "").splitlines() if ln.strip()]
         useful = [ln for ln in lines if "Error applying" in ln or "No such filter" in ln or "Invalid" in ln]
@@ -232,7 +232,7 @@ def apply_grade(src: Path, dst: Path, filter_str: str) -> None:
         cmd += ['-c:v', 'copy']
     cmd += ['-movflags', '+faststart', str(dst)]
     dst.parent.mkdir(parents=True, exist_ok=True)
-    proc = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    proc = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, encoding='utf-8', errors='replace')
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr[-800:])
 
@@ -306,4 +306,7 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     sys.exit(main())

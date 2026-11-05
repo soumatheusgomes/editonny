@@ -66,7 +66,8 @@ test('copy puts the request on the clipboard', async ({ page, context, browserNa
   await page.goto('/es/crear');
   await page.getByRole('button', { name: 'Copiar pedido' }).first().click();
   await expect(page.getByRole('status')).toContainText('Pedido copiado.');
-  const clipboard = await page.evaluate(() => navigator.clipboard.readText());
+  // The Windows clipboard stores CRLF; the copied request itself uses LF.
+  const clipboard = (await page.evaluate(() => navigator.clipboard.readText())).replaceAll('\r\n', '\n');
   expect(clipboard).toBe(await page.getByLabel('Pedido de edición generado').textContent());
   expect(clipboard.startsWith('$editonny\n\nEdita los videos en:')).toBe(true);
 });

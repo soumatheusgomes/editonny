@@ -23,30 +23,30 @@ class AiInCutTests(unittest.TestCase):
         shutil.copy(self.source, self.ai)
         self.request = self.root / 'request.json'
         self.request.write_text(json.dumps({'file': str(self.source), 'source': str(self.source), 'sourceFps': 30,
-                                            'pieces': [{'sourceStart': 0.0, 'start': 0.0, 'frames': 90}]}))
+                                            'pieces': [{'sourceStart': 0.0, 'start': 0.0, 'frames': 90}]}), encoding='utf-8')
         self.edl = self.edit / 'edl_manual.json'
         self.edl.write_text(json.dumps({'sources': {'main': str(self.source)},
-                                        'ranges': [{'id': 'r1', 'source': 'main', 'start': 0, 'end': 3}]}))
+                                        'ranges': [{'id': 'r1', 'source': 'main', 'start': 0, 'end': 3}]}), encoding='utf-8')
         self.cam = self.root / 'generated_cam.mp4'
 
     def run_recipe(self, *extra, edit=None):
         return subprocess.run([sys.executable, str(RECIPE), '--request', str(self.request), '--ai', str(self.ai),
                                '--edit', str(edit or self.edit), '--edl', str(self.edl), '--delay-ms', '0',
-                               '--start', '1', '--end', '2', *extra], capture_output=True, text=True, timeout=120)
+                               '--start', '1', '--end', '2', *extra], capture_output=True, text=True, timeout=120, encoding='utf-8', errors='replace')
 
     def test_rejected_runs_write_nothing(self):
-        before = self.edl.read_text()
+        before = self.edl.read_text(encoding='utf-8')
         sync = self.edit / 'synchronization.json'
-        sync.write_text(json.dumps({'primary': 'main', 'sources': {'AI1': {'file': '/elsewhere/other_cam.mp4'}}}))
+        sync.write_text(json.dumps({'primary': 'main', 'sources': {'AI1': {'file': '/elsewhere/other_cam.mp4'}}}), encoding='utf-8')
         result = self.run_recipe()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('choose another --name', result.stderr)
         sync.unlink()
-        self.edl.write_text(json.dumps({**json.loads(before), 'synchronization': 'nested/synchronization.json'}))
+        self.edl.write_text(json.dumps({**json.loads(before), 'synchronization': 'nested/synchronization.json'}), encoding='utf-8')
         result = self.run_recipe()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('point the EDL', result.stderr)
-        self.edl.write_text(before)
+        self.edl.write_text(before, encoding='utf-8')
         other = self.root / 'other edit'
         other.mkdir()
         result = self.run_recipe(edit=other)       # The renderer would read the EDL folder's synchronization.json.
@@ -63,13 +63,13 @@ class AiInCutTests(unittest.TestCase):
         original = self.root / 'generated_cam.mp4'
         self.source.rename(original)
         before = original.read_bytes()
-        self.request.write_text(json.dumps({**json.loads(self.request.read_text()), 'file': str(original), 'source': str(original)}))
+        self.request.write_text(json.dumps({**json.loads(self.request.read_text(encoding='utf-8')), 'file': str(original), 'source': str(original)}), encoding='utf-8')
         self.edl.write_text(json.dumps({'sources': {'main': str(original)},
-                                        'ranges': [{'id': 'r1', 'source': 'main', 'start': 0, 'end': 3}]}))
+                                        'ranges': [{'id': 'r1', 'source': 'main', 'start': 0, 'end': 3}]}), encoding='utf-8')
         result = self.run_recipe()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(original.read_bytes(), before)
-        self.assertEqual(json.loads(self.edl.read_text())['sources']['AI1'], str(self.root / 'generated_cam_2.mp4'))
+        self.assertEqual(json.loads(self.edl.read_text(encoding='utf-8'))['sources']['AI1'], str(self.root / 'generated_cam_2.mp4'))
 
     def test_many_windows_get_unique_segment_ids(self):
         sys.path.insert(0, str(RECIPE.parent))
@@ -89,18 +89,18 @@ class AiInCutTests(unittest.TestCase):
         for _ in range(2):
             result = self.run_recipe()
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.edl.write_text((self.edit / 'edl_manual.before-ai.json').read_text())
+            self.edl.write_text((self.edit / 'edl_manual.before-ai.json').read_text(encoding='utf-8'), encoding='utf-8')
         result = self.run_recipe()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        edl = json.loads(self.edl.read_text())
+        edl = json.loads(self.edl.read_text(encoding='utf-8'))
         self.assertEqual(edl['sources']['AI1'], str(self.cam))
         self.assertEqual([r.get('picture_source') for r in edl['ranges']], [None, 'AI1', None])
         # Rebuild from both backups (there was no synchronization file): the old copy is kept, not overwritten.
-        self.edl.write_text((self.edit / 'edl_manual.before-ai.json').read_text())
+        self.edl.write_text((self.edit / 'edl_manual.before-ai.json').read_text(encoding='utf-8'), encoding='utf-8')
         (self.edit / 'synchronization.json').unlink()
         result = self.run_recipe()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(json.loads(self.edl.read_text())['sources']['AI1'], str(self.root / 'generated_cam_2.mp4'))
+        self.assertEqual(json.loads(self.edl.read_text(encoding='utf-8'))['sources']['AI1'], str(self.root / 'generated_cam_2.mp4'))
         self.assertTrue(self.cam.exists())
 
 

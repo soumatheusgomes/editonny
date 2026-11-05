@@ -1,6 +1,7 @@
 import copy
 import importlib
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -9,6 +10,7 @@ import unittest
 HELPERS = Path(__file__).resolve().parents[1] / 'skills/editonny/engine/helpers'
 sys.path.insert(0, str(HELPERS))
 from workflow_fixtures import config, confirmation
+from workflow_fixtures import make_link
 
 
 class ProjectContractTests(unittest.TestCase):
@@ -69,10 +71,16 @@ class ProjectContractTests(unittest.TestCase):
         from common import ensure_distinct_output
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / 'original.mp4'; source.write_bytes(b'original')
-            alias = Path(tmp) / 'alias.mp4'; alias.symlink_to(source)
-            with self.assertRaises(ValueError):
-                ensure_distinct_output(alias, [source])
-            self.assertEqual(source.read_bytes(), b'original')
+            for kind in ('symlink', 'hardlink'):
+                with self.subTest(kind=kind):
+                    alias = Path(tmp) / f'{kind}.mp4'
+                    if kind == 'symlink':
+                        make_link(self, alias, source)
+                    else:
+                        os.link(source, alias)
+                    with self.assertRaises(ValueError):
+                        ensure_distinct_output(alias, [source])
+                    self.assertEqual(source.read_bytes(), b'original')
 
     def test_sample_and_scene_timing_change_artifact_not_consent(self):
         value = config()
@@ -99,20 +107,20 @@ class ProjectContractTests(unittest.TestCase):
             project = Path(tmp) / 'project'
             edit = Path(tmp) / 'edit'
             project.mkdir(); edit.mkdir()
-            (project / 'project.json').write_text(json.dumps(value))
-            (edit / 'source_manifest.json').write_text(json.dumps(manifest))
+            (project / 'project.json').write_text(json.dumps(value), encoding='utf-8')
+            (edit / 'source_manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
             with self.assertRaises(ValueError):
                 self.c.require_confirmation(project, self.c.source_identity_hash(manifest))
             approval = confirmation(value, manifest)
             approval['responseMessageId'] = approval['summaryMessageId']
-            (edit / 'state.json').write_text(json.dumps({'settingsConfirmation': approval}))
+            (edit / 'state.json').write_text(json.dumps({'settingsConfirmation': approval}), encoding='utf-8')
             with self.assertRaises(ValueError):
                 self.c.require_confirmation(project, self.c.source_identity_hash(manifest))
             approval = confirmation(value, manifest)
-            (edit / 'state.json').write_text(json.dumps({'settingsConfirmation': approval}))
+            (edit / 'state.json').write_text(json.dumps({'settingsConfirmation': approval}), encoding='utf-8')
             self.c.require_confirmation(project, self.c.source_identity_hash(manifest))
             value['captions']['enabled'] = False
-            (project / 'project.json').write_text(json.dumps(value))
+            (project / 'project.json').write_text(json.dumps(value), encoding='utf-8')
             with self.assertRaises(ValueError):
                 self.c.require_confirmation(project, self.c.source_identity_hash(manifest))
 

@@ -180,16 +180,16 @@ def parse_tesseract_tsv(tsv: str, width_value: int, height_value: int) -> list[d
 def read_directory(engine_value: tuple[str, object], directory: Path) -> dict[str, list[dict]]:
     if engine_value[0] == "vision":
         output_value = directory / "ocr.json"
-        subprocess.run([str(engine_value[1]), str(directory), str(output_value)], capture_output=True, text=True, check=True)
-        return json.loads(output_value.read_text())
+        subprocess.run([str(engine_value[1]), str(directory), str(output_value)], capture_output=True, text=True, check=True, encoding='utf-8', errors='replace')
+        return json.loads(output_value.read_text(encoding='utf-8'))
     out: dict[str, list[dict]] = {}
     from PIL import Image  # noqa: PLC0415
-    installed = subprocess.run([str(engine_value[1]), "--list-langs"], capture_output=True, text=True).stdout.split()
+    installed = subprocess.run([str(engine_value[1]), "--list-langs"], capture_output=True, text=True, encoding='utf-8', errors='replace').stdout.split()
     lang = "+".join(x for x in ("eng", "por", "spa") if x in installed) or "eng"   # The guide's spoken languages.
     for img in sorted(directory.glob("f_*.jpg")):
         w, h = Image.open(img).size
         # A failed read must stop the audit instead of passing as a frame without text.
-        r = subprocess.run([str(engine_value[1]), str(img), "-", "-l", lang, "tsv"], capture_output=True, text=True, check=True)
+        r = subprocess.run([str(engine_value[1]), str(img), "-", "-l", lang, "tsv"], capture_output=True, text=True, check=True, encoding='utf-8', errors='replace')
         out[img.name] = parse_tesseract_tsv(r.stdout, w, h)
     return out
 
@@ -207,7 +207,7 @@ def extract_frames(video: Path, directory: Path, first_value: int, n: int, rate:
     if not sample_value:
         cmd += ["-fps_mode", "passthrough"]
     cmd += ["-q:v", "2", str(directory / "f_%05d.jpg")]
-    subprocess.run(cmd, capture_output=True, text=True, check=True)
+    subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8', errors='replace')
     return len(list(directory.glob("f_*.jpg")))
 
 
@@ -359,4 +359,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     raise SystemExit(main())

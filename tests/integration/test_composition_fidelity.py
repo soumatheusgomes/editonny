@@ -20,7 +20,7 @@ class CompositionFidelityTests(unittest.TestCase):
             root = Path(tmp)
             source = root / 'source.mp4'; make_patches(source, True, 'smpte170m')
             data = root / 'edit_data.json'
-            data.write_text(json.dumps({'base': str(source), 'captions': {'enabled': False}}))
+            data.write_text(json.dumps({'base': str(source), 'captions': {'enabled': False}}), encoding='utf-8')
             output = root / 'composed.mp4'
             plan = build_plan(data, str(output), False); plan.renders.mkdir(parents=True)
             overlay = root / 'motion.png'
@@ -38,12 +38,12 @@ class CompositionFidelityTests(unittest.TestCase):
             subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'color=gray:s=128x64:r=24:d=1',
                 '-vf', 'format=yuv444p,setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709',
                 '-c:v', 'libx264', '-pix_fmt', 'yuv444p', str(source)], check=True)
-            data = root / 'edit_data.json'; data.write_text(json.dumps({'base': str(source), 'captions': {'enabled': False}}))
+            data = root / 'edit_data.json'; data.write_text(json.dumps({'base': str(source), 'captions': {'enabled': False}}), encoding='utf-8')
             output = root / 'composed.mp4'
             plan = build_plan(data, str(output), False); plan.renders.mkdir(parents=True)
             Image.new('RGBA', (128, 64)).save(root / 'transparent.png')
             track = root / 'overlay.ffconcat'
-            track.write_text("ffconcat version 1.0\nfile 'transparent.png'\nduration 1\nfile 'transparent.png'\n")
+            track.write_text("ffconcat version 1.0\nfile 'transparent.png'\nduration 1\nfile 'transparent.png'\n", encoding='utf-8')
             with self.assertRaisesRegex(ComposeError, 'chroma|4:2:0|precision'):
                 run_video(plan, [], {'captions': (track, 1, [(0, 24)])}, None, output)
             self.assertFalse(output.exists())
@@ -53,14 +53,14 @@ class CompositionFidelityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             source = root / 'source.mp4'; make_patches(source, True, 'smpte170m')
-            data = root / 'edit_data.json'; data.write_text(json.dumps({'base': str(source), 'captions': {'enabled': False}}))
+            data = root / 'edit_data.json'; data.write_text(json.dumps({'base': str(source), 'captions': {'enabled': False}}), encoding='utf-8')
             output = root / 'composed.mp4'
             plan = build_plan(data, str(output), False); plan.renders.mkdir(parents=True)
             overlay = Image.new('RGBA', (128, 64))
             ImageDraw.Draw(overlay).rectangle((4, 48, 24, 60), fill=(255, 255, 255, 180))
             overlay.save(root / 'overlay.png')
             track = root / 'overlay.ffconcat'
-            track.write_text("ffconcat version 1.0\nfile 'overlay.png'\nduration 0.041666667\nfile 'overlay.png'\n")
+            track.write_text("ffconcat version 1.0\nfile 'overlay.png'\nduration 0.041666667\nfile 'overlay.png'\n", encoding='utf-8')
             run_video(plan, [], {'captions': (track, 1, [(0, 1)])}, None, output)
             actual = probe_video(output)
             self.assertEqual(actual['color_range'], 'pc')
@@ -74,7 +74,7 @@ class CompositionFidelityTests(unittest.TestCase):
             root = Path(tmp)
             source = root / 'source.mp4'; make_patches(source, True, 'smpte170m')
             data = root / 'edit_data.json'
-            data.write_text(json.dumps({'base': str(source), 'captions': {'enabled': False}}))
+            data.write_text(json.dumps({'base': str(source), 'captions': {'enabled': False}}), encoding='utf-8')
             output = root / 'composed.mp4'
             plan = build_plan(data, str(output), False)
             plan.renders.mkdir(parents=True)
@@ -95,9 +95,9 @@ class CompositionFidelityTests(unittest.TestCase):
             root = Path(tmp)
             source = root / 'cut.mp4'; make_patches(source)
             (root / 'source_manifest.json').write_text(json.dumps({'sources': [
-                {'id': 'source', 'path': str(source), 'facts': probe_video(source)}]}))
+                {'id': 'source', 'path': str(source), 'facts': probe_video(source)}]}), encoding='utf-8')
             data = root / 'edit_data.json'
-            data.write_text(json.dumps({'base': str(source), 'contractHash': 'confirmed'}))
+            data.write_text(json.dumps({'base': str(source), 'contractHash': 'confirmed'}), encoding='utf-8')
             with mock.patch('project_contract.managed_config', return_value=contract), \
                  mock.patch('project_contract.settings_hash', return_value='confirmed'):
                 plan = build_plan(data, str(root / 'composed.mp4'), False)
@@ -113,7 +113,7 @@ class CompositionFidelityTests(unittest.TestCase):
             root = Path(tmp)
             source = root / 'source.mp4'; make_hdr_patches(source, 'smpte2084')
             data = root / 'edit_data.json'
-            data.write_text(json.dumps({'base': str(source), 'captions': {'enabled': False}}))
+            data.write_text(json.dumps({'base': str(source), 'captions': {'enabled': False}}), encoding='utf-8')
             output = root / 'composed.mp4'
             plan = build_plan(data, str(output), False)
             tracks = build_tracks(plan, [])

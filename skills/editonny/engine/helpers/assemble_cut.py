@@ -268,7 +268,7 @@ def main() -> int:
         save_json(edl_path, edl)
         # voice level per range now, so the first render does not come back with LOW-LEVEL flags
         vl = subprocess.run([sys.executable, str(Path(__file__).with_name("voice_levels.py")), "--edl", str(edl_path),
-                             "--drop-db", str(GAIN_DB)], capture_output=True, text=True)
+                             "--drop-db", str(GAIN_DB)], capture_output=True, text=True, encoding='utf-8', errors='replace')
         levels = load_json(edit / "verify" / "voice_levels.json") if vl.returncode == 0 else None
         gains_value = {r["id"]: float(r["gain_db"]) for r in (levels or {}).get("ranges", [])
                   if (r.get("low") or r.get("high")) and r.get("gain_db") is not None}
@@ -284,4 +284,7 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     sys.exit(main())

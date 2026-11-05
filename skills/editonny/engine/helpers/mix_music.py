@@ -37,7 +37,7 @@ def run(cmd: list, **kw):
 def probe_value(p: str) -> dict:
     r = subprocess.run(["ffprobe", "-v", "error", "-show_entries",
                         "stream=codec_type,duration,sample_rate:format=duration", "-of", "json", p],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding='utf-8', errors='replace')
     if r.returncode:
         error_value(f'Could not open {p}')
     d = json.loads(r.stdout)
@@ -51,7 +51,7 @@ def probe_value(p: str) -> dict:
 def loudness(p: str, af: str = "") -> dict:
     process = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", p, "-vn", "-af",
                         af + "loudnorm=I=-14:TP=-1:LRA=11:print_format=json", "-f", "null", "-"],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding='utf-8', errors='replace')
     if process.returncode:
         error_value(f'could not measure loudness of {p}')
     r = process.stderr
@@ -82,7 +82,7 @@ def finalize(video: str, wav: str, output_value: str) -> tuple[dict, str, dict]:
         af, j = chain_loudnorm(wav, tp=tp)
         r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-y", "-i", video, "-i", wav, "-map", "0:v:0",
                             "-map", "1:a:0", "-c:v", "copy", "-af", af, "-c:a", "aac", "-b:a", "256k",
-                            "-movflags", "+faststart", output_value], capture_output=True, text=True)
+                            "-movflags", "+faststart", output_value], capture_output=True, text=True, encoding='utf-8', errors='replace')
         if r.returncode:
             error_value('FFmpeg failed to write the final video:' + r.stderr[-1500:])
         type_value = "linear"
@@ -320,8 +320,11 @@ def main(argv=None):
                duration_input=round(D, 3), duration_output_video=round(only_value["video"], 3),
                duration_output_audio=round(only_value["audio"], 3), final_lufs=float(end_value["input_i"]),
                peak_final_dbtp=float(end_value["input_tp"]), adjustment=type_value, deviation_voice_ms=sync_value)
-    Path(output_value + ".music.json").write_text(json.dumps(rel, ensure_ascii=False, indent=1))
+    Path(output_value + ".music.json").write_text(json.dumps(rel, ensure_ascii=False, indent=1), encoding='utf-8')
 
 
 if __name__ == "__main__":
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     main()

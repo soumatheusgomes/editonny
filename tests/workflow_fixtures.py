@@ -1,8 +1,25 @@
 """Small explicit contracts for filesystem and decision-boundary tests."""
 from pathlib import Path
 
+# An absolute path on every platform: Windows needs the drive of the current directory.
+APPROVED_ROOT = Path(Path.cwd().anchor, 'approved', 'workspace')
 
-def config(root=Path('/approved/workspace')):
+
+def make_link(test, link, target, directory=False):
+    """Create a symlink. Windows without symlink privilege (error 1314) gets a junction for a
+    directory, which redirects the path the same way, and skips the test for a file."""
+    try:
+        Path(link).symlink_to(target, target_is_directory=directory)
+    except OSError as error:
+        if getattr(error, 'winerror', None) != 1314:
+            raise
+        if not directory:
+            test.skipTest('File symlinks need Developer Mode or administrator rights on Windows')
+        import _winapi
+        _winapi.CreateJunction(str(Path(target).absolute()), str(link))
+
+
+def config(root=APPROVED_ROOT):
     return {'title': 'Interview', 'style': 'paper', 'format': '9:16', 'edit': '../edit',
             'captions': {'enabled': True, 'style': 'standard', 'maxWords': 3, 'inFrame': False},
             'blocks': [{'scene': 'fullscreen', 'start': 0, 'zoom': 1.0}],

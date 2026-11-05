@@ -23,7 +23,7 @@ class ManagedNativeTests(unittest.TestCase):
         (ROOT / '.work').mkdir(exist_ok=True)
         root = Path(tempfile.mkdtemp(prefix='managed native ', dir=ROOT / '.work'))
         def run(*args, cwd=ROOT):
-            result = subprocess.run([str(a) for a in args], cwd=cwd, capture_output=True, text=True, timeout=600)
+            result = subprocess.run([str(a) for a in args], cwd=cwd, capture_output=True, text=True, timeout=600, encoding='utf-8', errors='replace')
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             return result
         try:
@@ -42,11 +42,11 @@ class ManagedNativeTests(unittest.TestCase):
             edit = cut.parent
             (edit / 'transcripts/cut.json').write_text(json.dumps({'words': [
                 {'text': 'Colore', 'start': 0.1, 'end': 0.8}, {'text': 'stays', 'start': 0.9, 'end': 1.5},
-                {'text': 'original', 'start': 1.6, 'end': 2.8}]}))
+                {'text': 'original', 'start': 1.6, 'end': 2.8}]}), encoding='utf-8')
             for args in (['prepare'], ['sample', '0', '8'], ['hf', 'lint'], ['hf', 'check'],
                          ['hf', 'render', '--quality', 'draft', '--crf', '10', '--output', 'renders/sample.mp4']):
                 result = run(sys.executable, 'build.py', *args, cwd=project)
-                (root / (args[-1].split('/')[-1] + '.log')).write_text(result.stdout + result.stderr)
+                (root / (args[-1].split('/')[-1] + '.log')).write_text(result.stdout + result.stderr, encoding='utf-8')
             sample = project / 'renders/sample.mp4'
             reviewed_dependencies = render_dependencies(project)
             record_review(project, sample, {'reviewer': 'agent', 'notes': 'Representative eight-second controlled caption/voice sample, checked by the conformance gate',
@@ -56,12 +56,12 @@ class ManagedNativeTests(unittest.TestCase):
             run(sys.executable, 'build.py', 'hf', 'render', '--quality', 'draft', '--crf', '10', '--output', 'renders/candidate.mp4', cwd=project)
             candidate = project / 'renders/candidate.mp4'
             report = verify_media(candidate, project)
-            (root / 'verification.json').write_text(json.dumps(report, indent=2))
+            (root / 'verification.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
             self.assertEqual(report['status'], 'passed', report)
             delivered = publish_export(project, candidate, report)
             self.assertEqual(len(delivered['subtitles']), 2)
             for subtitle in delivered['subtitles']:
-                text = Path(subtitle['path']).read_text()
+                text = Path(subtitle['path']).read_text(encoding='utf-8')
                 self.assertIn('Color', text)
                 self.assertNotIn('Colore', text)
             self.assertEqual(content_hash(source), original)

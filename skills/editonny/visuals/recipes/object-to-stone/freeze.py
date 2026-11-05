@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 def probe(path):
-    out = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-count_packets', '-show_entries', 'stream=r_frame_rate,nb_read_packets', '-show_entries', 'format=duration', '-of', 'csv=p=0:nk=1', path], capture_output=True, text=True).stdout.split()
+    out = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-count_packets', '-show_entries', 'stream=r_frame_rate,nb_read_packets', '-show_entries', 'format=duration', '-of', 'csv=p=0:nk=1', path], capture_output=True, text=True, encoding='utf-8', errors='replace').stdout.split()
     (num, den) = out[0].split(',')[0].split('/')
     fps = float(num) / float(den)
     frames = int(out[0].split(',')[1]) if ',' in out[0] else 0
@@ -55,4 +55,7 @@ def main():
     subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', a.input_file, '-filter_complex', ';'.join(chain), '-map', f'[{last}]', '-an', '-r', f'{fps:.6f}', '-c:v', 'libx264', '-crf', '14', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', a.output], check=True)
     print(f'ok {a.output}: ' + ' · '.join(msg))
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     main()

@@ -26,11 +26,11 @@ class ScreenTextCacheTests(unittest.TestCase):
                     self.assertEqual(screen_text.main(['--video', str(video), '--edit-dir', str(root), '--transcript',
                                                        str(transcript), '--backend', backend]), 0)
             with mock.patch.object(screen_text, 'map_value', side_effect=fresh) as measure:
-                transcript.write_text(json.dumps({'words': [{'text': 'one', 'start': 0.1}]}))
+                transcript.write_text(json.dumps({'words': [{'text': 'one', 'start': 0.1}]}), encoding='utf-8')
                 run()
                 run()
                 self.assertEqual(measure.call_count, 1)
-                transcript.write_text(json.dumps({'words': [{'text': 'two', 'start': 0.1}]}))
+                transcript.write_text(json.dumps({'words': [{'text': 'two', 'start': 0.1}]}), encoding='utf-8')
                 run()
                 self.assertEqual(measure.call_count, 2)
                 run('vision')

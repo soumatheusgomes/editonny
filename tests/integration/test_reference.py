@@ -25,15 +25,15 @@ class ReferenceTests(unittest.TestCase):
             before = hashlib.sha256(video.read_bytes()).hexdigest()
             result = subprocess.run([sys.executable, str(HELPER), str(video), '--output',
                                      str(output), '--without-speech', '--without-text'],
-                                    capture_output=True, text=True, timeout=60)
+                                    capture_output=True, text=True, timeout=60, encoding='utf-8', errors='replace')
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            rules = json.loads((output / 'reference-rules.json').read_text())
+            rules = json.loads((output / 'reference-rules.json').read_text(encoding='utf-8'))
             self.assertEqual(rules['metadata']['aspect_ratio'], '2:3')
             self.assertTrue(rules['metadata']['has_audio'])
             self.assertIn('pacing', rules)
             self.assertIn('integrated_lufs', rules['audio']['loudness'])
             self.assertIn('edit_data', rules)
-            self.assertIn('## 6. Audio', (output / 'style-guide.md').read_text())
+            self.assertIn('## 6. Audio', (output / 'style-guide.md').read_text(encoding='utf-8'))
             self.assertTrue(list((output / 'contact-sheets').glob('sheet_*.jpg')))
             self.assertEqual(hashlib.sha256(video.read_bytes()).hexdigest(), before)
 

@@ -5,6 +5,9 @@ import { createServer } from 'node:http';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import { pythonCommand } from '../scripts/python.mjs';
+
+const [python, ...pythonPrefix] = pythonCommand();
 
 // Reuse a prepared project runtime with EDITONNY_GSAP to run without network access.
 test('2D scene templates mount, animate, and seek without missing targets or duplicate IDs', async () => {
@@ -133,11 +136,11 @@ test('2D scene templates mount, animate, and seek without missing targets or dup
       assert.equal(checked.deterministic,true,`${scene.id}: backward seek`);
     }
     // Fixed layouts as scene --use writes them: renamed copies keep runtime-built selectors, and a final-frame hold skips the exit.
-    const fixedCopies=JSON.parse((await exec('python3',['-B','-c',`import json, apply
+    const fixedCopies=JSON.parse((await exec(python,[...pythonPrefix,'-B','-c',`import json, apply
 out = []
 for c in apply.catalog().values():
     if c['layout'] in ('fullscreen', 'frame') and not c.get('adaptation'):
-        new, d = c['id'] + '-01', float(c['duration']); copy = apply.replace_id(open('scenes/%s.html' % c['id']).read(), c['id'], new)
+        new, d = c['id'] + '-01', float(c['duration']); copy = apply.replace_id(open('scenes/%s.html' % c['id'], encoding='utf-8').read(), c['id'], new)
         fit = lambda html: (apply.wait_for_frame if c['layout'] == 'frame' else apply.shorten)(apply.hold_exit(html, new, 20, d - .5), new, d, round(d * .9, 3))
         out.append({'id': new, 'copy': copy, 'hold': fit(copy)})
         if c['id'] == 'location-map-panel': out[-1]['late'] = fit(apply.set_parameter(copy, 'others', 'SCHOOL'))

@@ -43,25 +43,25 @@ class SoundPlanTests(unittest.TestCase):
             edit, project = root / 'edit', root / 'project'
             edit.mkdir()
             project.mkdir()
-            (edit / 'cut_timeline.json').write_text(json.dumps({'duration': 3}))
+            (edit / 'cut_timeline.json').write_text(json.dumps({'duration': 3}), encoding='utf-8')
             (project / 'project.json').write_text(json.dumps({'edit': '../edit', 'endHold': 0.5,
                 'endCard': {'enabled': True, 'seconds': 1},
-                'sounds': [{'file': 'personal.wav', 'at': 0.2, 'note': 'Keep this manually chosen cue'}]}))
-            (project / 'events.json').write_text(json.dumps([{'t': 1, 'type': 'pop'}]))
+                'sounds': [{'file': 'personal.wav', 'at': 0.2, 'note': 'Keep this manually chosen cue'}]}), encoding='utf-8')
+            (project / 'events.json').write_text(json.dumps([{'t': 1, 'type': 'pop'}]), encoding='utf-8')
             for options in ([], ['--mode', 'speech', '--max', '1']):
                 result = subprocess.run([sys.executable, str(HELPER), '--project', str(project), *options],
-                                        capture_output=True, text=True, timeout=30)
+                                        capture_output=True, text=True, timeout=30, encoding='utf-8', errors='replace')
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertNotIn('mix_music.py', result.stdout)
-                plan = json.loads((project / 'sound_plan.json').read_text())
+                plan = json.loads((project / 'sound_plan.json').read_text(encoding='utf-8'))
                 self.assertEqual(plan['video_duration'], 4.5)
                 self.assertEqual(len(plan['sounds']), 1)
                 self.assertTrue(plan['verification']['checked'])
-                cfg = json.loads((project / 'project.json').read_text())
+                cfg = json.loads((project / 'project.json').read_text(encoding='utf-8'))
                 self.assertEqual(len(cfg['sounds']), 2)
                 self.assertTrue(any(s.get('note') == 'Keep this manually chosen cue' for s in cfg['sounds']))
                 self.assertTrue((project / 'assets/sfx/LICENSE-woven.md').is_file())
-                self.assertIn('CC0', (project / 'assets/sfx/LICENSES.txt').read_text())
+                self.assertIn('CC0', (project / 'assets/sfx/LICENSES.txt').read_text(encoding='utf-8'))
 
     def test_same_named_sounds_never_replace_each_other(self):
         spec = importlib.util.spec_from_file_location('sound_names_test', HELPER)
@@ -85,7 +85,7 @@ class SoundPlanTests(unittest.TestCase):
                                dict(sound, file=str(root / 'a/pop.wav'))]}
             module.apply_in_project(plan, root / 'project', {'cfg': {}, 'file': config}, None)
             self.assertEqual((sfx / 'pop.wav').read_bytes(), b'MINE')
-            files = [s['file'] for s in json.loads(config.read_text())['sounds']]
+            files = [s['file'] for s in json.loads(config.read_text(encoding='utf-8'))['sounds']]
             self.assertEqual([(root / 'project' / f).read_bytes() for f in files], [b'AAAA', b'BBBB', b'AAAA'])
             self.assertEqual(len([p for p in sfx.iterdir() if p.suffix == '.wav']), 4)
 
@@ -97,7 +97,7 @@ class SoundPlanTests(unittest.TestCase):
             library = Path(temporary)
             (library / 'effect.wav').write_bytes(b'Fixture only; resolution does not decode audio')
             (library / 'effects.json').write_text(json.dumps({'effects': {'pop-001': {
-                'file': 'effect.wav', 'category': 'pop', 'name': 'Pop'}}}))
+                'file': 'effect.wav', 'category': 'pop', 'name': 'Pop'}}}), encoding='utf-8')
             module.LIBRARY = library
             self.assertEqual(module.resolve_sound('library:pop-001'), library / 'effect.wav')
             self.assertEqual(module.resolve_sound('library:pop'), library / 'effect.wav')

@@ -21,7 +21,7 @@ def transition(p, name, cuts):
     c = catalog().get(scene_id)
     if not c:
         raise ValueError(f'Unknown transition: {name}')
-    content = Path(origin_dir(), 'scenes', scene_id + '.html').read_text()
+    content = Path(origin_dir(), 'scenes', scene_id + '.html').read_text(encoding='utf-8')
     copy_assets(Path(origin_dir()), Path(p), content)
     folder = Path(p, 'compositions', 'scenes')
     folder.mkdir(parents=True, exist_ok=True)
@@ -30,7 +30,7 @@ def transition(p, name, cuts):
         while os.path.lexists(folder / f'transition-{i:02d}-{name}.html'):
             i += 1
         new = f'transition-{i:02d}-{name}'
-        with (folder / (new + '.html')).open('x') as stream:
+        with (folder / (new + '.html')).open('x', encoding='utf-8') as stream:
             stream.write(replace_id(content, scene_id, new))
         rows.append({'file': f'compositions/scenes/{new}.html',
                      'start': round(cut - c['duration'] / 2, 3),
@@ -48,7 +48,7 @@ def pointer(p, name, count, kind='pointer', pre=None):
     c = catalog().get(scene_id)
     if not c:
         raise ValueError(f'Unknown {kind}: {name}')
-    content = Path(origin_dir(), 'scenes', scene_id + '.html').read_text()
+    content = Path(origin_dir(), 'scenes', scene_id + '.html').read_text(encoding='utf-8')
     copy_assets(Path(origin_dir()), Path(p), content)
     folder = Path(p, 'compositions', 'scenes')
     folder.mkdir(parents=True, exist_ok=True)
@@ -57,7 +57,7 @@ def pointer(p, name, count, kind='pointer', pre=None):
         while os.path.lexists(folder / f'{prefix}-{i:02d}-{name}.html'):
             i += 1
         new = f'{prefix}-{i:02d}-{name}'
-        with (folder / (new + '.html')).open('x') as stream:
+        with (folder / (new + '.html')).open('x', encoding='utf-8') as stream:
             stream.write(replace_id(content, scene_id, new))
         row = {'file': f'compositions/scenes/{new}.html', 'start': 0.0,
                'end': c['duration'], 'name': f'{kind.capitalize()} · {name} {i}', 'sceneId': scene_id}
@@ -69,7 +69,7 @@ def pointer(p, name, count, kind='pointer', pre=None):
 
 
 def origin_dir(): return HERE
-def catalog(): return {c['id']: c for c in json.load(open(os.path.join(origin_dir(), 'catalog.json')))['scenes']}
+def catalog(): return {c['id']: c for c in json.load(open(os.path.join(origin_dir(), 'catalog.json'), encoding='utf-8'))['scenes']}
 BUILT_ID = r'(["\'])#?([A-Za-z][\w-]*)\1\s*\+'   # "#c3-p" + n: an ID prefix completed at runtime
 def made_at_runtime(scr, prefix):
     """The script creates IDs with this prefix itself (e.id = "n-c" + j), so no page element carries it."""
@@ -176,7 +176,7 @@ def set_parameter(content, k, v):
     return re.sub(r'(\n\s*%s:\s*)(.*?),(\s*//)' % re.escape(k), lambda m: m.group(1) + json.dumps(v, ensure_ascii=False) + ',' + m.group(3), content, count=1)
 def cut_duration(p, proj):
     edit = os.path.normpath(os.path.join(p, proj.get('edit', '../edit')))
-    try: return float(json.load(open(os.path.join(edit, 'cut_timeline.json')))['duration'])
+    try: return float(json.load(open(os.path.join(edit, 'cut_timeline.json'), encoding='utf-8'))['duration'])
     except (OSError, ValueError, KeyError, TypeError): return None
 def frames(proj):
     """Merge adjacent numeric frame blocks so contiguous panels share one frame."""
@@ -219,9 +219,9 @@ def _norm(s):
 def hidden_caption_ranges(p, proj, cat):
     """Calculate caption exclusions from frame blocks, comparisons, green screen settings, explicit exclusions, lettering, and overlay scenes."""
     edit = os.path.normpath(os.path.join(p, proj.get('edit', '../edit')))
-    try: ws = [w for w in json.load(open(os.path.join(edit, 'transcripts', 'cut.json')))['words'] if str(w.get('text', '')).strip()]
+    try: ws = [w for w in json.load(open(os.path.join(edit, 'transcripts', 'cut.json'), encoding='utf-8'))['words'] if str(w.get('text', '')).strip()]
     except (OSError, ValueError, KeyError, TypeError): ws = []
-    try: vdur = float(json.load(open(os.path.join(edit, 'cut_timeline.json')))['duration'])
+    try: vdur = float(json.load(open(os.path.join(edit, 'cut_timeline.json'), encoding='utf-8'))['duration'])
     except (OSError, ValueError, KeyError, TypeError): vdur = 1e6
     warnings = []
     def time(d, k, after=0.0):
@@ -279,14 +279,14 @@ def update_captions(p, proj=None, cat=None, speak=True):
     """Write caption exclusion intervals into each copied scene. Re-run after moving blocks or overlays; shorter overlapping captions take priority."""
     import re
     p = os.path.abspath(os.path.expanduser(p)); cat = cat or catalog()
-    proj = proj or json.load(open(os.path.join(p, 'project.json')))
+    proj = proj or json.load(open(os.path.join(p, 'project.json'), encoding='utf-8'))
     legs = [l for l in proj.get('scenes', []) if is_caption(p, l, cat) or (cat.get(l.get('sceneId')) or {}).get('type') == 'captions']
     if not legs: return
     tracks, warnings = hidden_caption_ranges(p, proj, cat)
     for l in legs:
         f = os.path.join(p, l['file'])
         if not os.path.exists(f): continue
-        content = open(f).read()
+        content = open(f, encoding='utf-8').read()
         if 'var HIDDEN_RANGES = ' not in content:
             print(f'  Warning: {l["file"]} has no HIDDEN_RANGES declaration; reapply the scene before updating caption exclusions'); continue
         try: start = float(l['start']); end = float(l['end'])
@@ -304,7 +304,7 @@ def update_captions(p, proj=None, cat=None, speak=True):
             else: jm.append([a_, z_])
         own = jm
         new = re.sub(r'var HIDDEN_RANGES = \[.*?\];', 'var HIDDEN_RANGES = ' + json.dumps(own) + ';', content, count=1)
-        if new != content: open(f, 'w').write(new)
+        if new != content: open(f, 'w', encoding='utf-8').write(new)
         if speak:
             print(f'  Captions {os.path.basename(f)}: hidden in {len(own)} intervals' + (': ' + ', '.join(f'{a:.2f}-{z:.2f}' for a, z in own[:8]) + (' ...' if len(own) > 8 else '') if own else ''))
     for v in warnings: print(f'  Warning: word "{v}" was not found in the cut transcript; its caption exclusion was skipped')
@@ -326,8 +326,8 @@ def use_scene(p, id_, start, end=None, cut=None):
     i = 1
     while os.path.lexists(os.path.join(folder, f'{id_}-{i:02d}.html')): i += 1
     new = f'{id_}-{i:02d}'
-    content = replace_id(open(os.path.join(origin_dir(), 'scenes', id_ + '.html')).read(), id_, new)
-    proj0 = json.load(open(pj)); vdur = cut_duration(p, proj0)
+    content = replace_id(open(os.path.join(origin_dir(), 'scenes', id_ + '.html'), encoding='utf-8').read(), id_, new)
+    proj0 = json.load(open(pj, encoding='utf-8')); vdur = cut_duration(p, proj0)
     in_frame = False
     stays = vdur is not None and c.get('category') != 'Transitions' and c.get('type') != 'captions' and end >= vdur - 0.25
     fixed = c['layout'] in ('fullscreen', 'frame') and not c.get('adaptation')
@@ -356,7 +356,7 @@ def use_scene(p, id_, start, end=None, cut=None):
     nb = copy_assets(Path(origin_dir()), Path(p), content)
     if nb: print(f'  Copied {nb} visual assets to assets/visuals')
     os.makedirs(folder, exist_ok=True)
-    open(os.path.join(folder, new + '.html'), 'x').write(content)
+    open(os.path.join(folder, new + '.html'), 'x', encoding='utf-8').write(content)
     row = {'file': f'compositions/scenes/{new}.html', 'start': round(start, 3), 'end': round(end, 3), 'name': f"{c['name']} {i}", 'sceneId': id_}
     if c.get('hidesCaptions'): row['hidesCaptions'] = True
     if in_frame: row['aboveFace'] = True
@@ -366,9 +366,9 @@ def use_scene(p, id_, start, end=None, cut=None):
         if dur < 2.0 or dur > 4.0: print('  Warning: comedy scenes work best at 2–4 seconds (requested: %.2f)' % dur)
     elif c.get('category') in ('Proof cards', 'Interfaces', 'Scene objects', 'Image entrances', 'Neon') and dur < 2.5:
         print('  Warning: %s work best at 2.5 seconds or longer (requested: %.2f)' % (c['category'], dur))
-    proj = json.load(open(pj)); proj.setdefault('scenes', []).append(row)
+    proj = json.load(open(pj, encoding='utf-8')); proj.setdefault('scenes', []).append(row)
     if sort_layers(proj, cat, p): print('  Layers sorted: effects and transitions, then captions, then overlays')
-    json.dump(proj, open(pj, 'w'), ensure_ascii=False, indent=1)
+    json.dump(proj, open(pj, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     print(f'Applied {new}.html from {start:.2f} to {end:.2f} seconds in project.json' + (f' (shortened from {d:g} to {dur:g} seconds)' if fixed and abs(dur - d) > 0.05 else ''))
     if stays: print('  Holding through the final frame so the call to action remains visible')
     if c['layout'] == 'frame':
@@ -428,7 +428,7 @@ def level_for_volume(f, role):
 
 def sounds(p):
     """Write events.json with scene sounds aligned to their visible animation and normalized by measured loudness."""
-    p = os.path.abspath(os.path.expanduser(p)); proj = json.load(open(os.path.join(p, 'project.json'))); cat = catalog()
+    p = os.path.abspath(os.path.expanduser(p)); proj = json.load(open(os.path.join(p, 'project.json'), encoding='utf-8')); cat = catalog()
     ef = os.path.join(origin_dir(), 'library', 'effects')
     def wav(category, n=1):
         folder = os.path.join(ef, category)
@@ -436,7 +436,7 @@ def sounds(p):
         fs = sorted(f for f in os.listdir(folder) if f.endswith('.wav'))
         return os.path.join(folder, fs[(n - 1) % len(fs)]) if fs else None
     ev_path = os.path.join(p, 'events.json')
-    old_items = json.load(open(ev_path)) if os.path.exists(ev_path) else []
+    old_items = json.load(open(ev_path, encoding='utf-8')) if os.path.exists(ev_path) else []
     if isinstance(old_items, dict): old_items = old_items.get('events', [])
     events = [e for e in old_items if not e.get('sceneId')]; counts = {}
 
@@ -480,11 +480,11 @@ def sounds(p):
         events.append(ev)
         output = {'text-spotlight-off': 'photo', 'text-exhale': 'swish'}.get(id_)
         if output and wav(output): events.append(dict({'t': round(float(l['end']) - 0.15, 3), 'sound': wav(output), 'note': 'exit · ' + l.get('name', id_), 'sceneId': id_}, **({'level': level_for_volume(wav(output), 'standard')} if level_for_volume(wav(output), 'standard') is not None else {})))
-        if g not in ('Transitions', 'Pointers', 'Video effects', 'Captions and titles', 'Proof cards', 'Interfaces', 'Scene objects', 'Comedy', 'Image entrances', 'Neon') and '"scene-' in open(os.path.join(p, l['file'])).read() and 'countNumber(' in open(os.path.join(p, l['file'])).read():
+        if g not in ('Transitions', 'Pointers', 'Video effects', 'Captions and titles', 'Proof cards', 'Interfaces', 'Scene objects', 'Comedy', 'Image entrances', 'Neon') and '"scene-' in open(os.path.join(p, l['file']), encoding='utf-8').read() and 'countNumber(' in open(os.path.join(p, l['file']), encoding='utf-8').read():
             dur = float(l['end']) - start; esc = dur / c['duration']; w2 = wav('pop-ui', counts.setdefault('pop-ui', 0) + 1); counts['pop-ui'] += 1
             if w2: events.append(dict({'t': round(start + 1.1 * esc, 3), 'sound': w2, 'note': 'number appears · ' + l.get('name', id_), 'sceneId': id_}, **({'level': level_for_volume(w2, 'standard')} if level_for_volume(w2, 'standard') is not None else {})))
     events.sort(key=lambda e: e.get('t', 0))
-    json.dump(events, open(ev_path, 'w'), ensure_ascii=False, indent=1)
+    json.dump(events, open(ev_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     n = sum(1 for e in events if e.get('sceneId'))
     print(f'Wrote {n} scene sound events to {ev_path}')
     update_captions(p, proj, cat)
@@ -534,7 +534,7 @@ def main(argv=None):
         parser.error('--project is required')
     if args.project and not (args.project / 'project.json').is_file():
         parser.error('project.json is missing from --project')
-    configuration = json.loads((args.project / 'project.json').read_text()) if args.project else {}
+    configuration = json.loads((args.project / 'project.json').read_text(encoding='utf-8')) if args.project else {}
     if args.project and (configuration.get('workflow') or (args.project / configuration.get('edit', '../edit') / 'source_manifest.json').exists()):
         sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'engine/helpers'))
         from project_contract import managed_config
@@ -608,10 +608,10 @@ def main(argv=None):
             sounds(str(args.project))
         elif args.captions:
             path = args.project / 'project.json'
-            configuration = json.loads(path.read_text())
+            configuration = json.loads(path.read_text(encoding='utf-8'))
             cat = catalog()
             if sort_layers(configuration, cat, str(args.project)):
-                path.write_text(json.dumps(configuration, ensure_ascii=False, indent=2) + '\n')
+                path.write_text(json.dumps(configuration, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
             update_captions(str(args.project), configuration, cat)
         else:
             project(str(args.project))
@@ -622,4 +622,7 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     raise SystemExit(main())

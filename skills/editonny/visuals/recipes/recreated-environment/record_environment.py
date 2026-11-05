@@ -12,7 +12,7 @@ except ImportError:
     sys.exit('error: OpenCV missing. Use the engine Python: uv run --directory <SKILL> python record_environment.py ...')
 
 def probe(path):
-    out = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height,r_frame_rate', '-of', 'csv=p=0', path], capture_output=True, text=True).stdout.strip().split(',')
+    out = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height,r_frame_rate', '-of', 'csv=p=0', path], capture_output=True, text=True, encoding='utf-8', errors='replace').stdout.strip().split(',')
     if len(out) < 3:
         sys.exit(f'error: could not read {path}')
     (n, d) = out[2].split('/')
@@ -104,7 +104,7 @@ def main():
         start = a.cutout_start
         if start is None:
             js = os.path.splitext(a.cutout)[0] + '.json'
-            start = json.load(open(js)).get('start', 0.0) if os.path.exists(js) else 0.0
+            start = json.load(open(js, encoding='utf-8')).get('start', 0.0) if os.path.exists(js) else 0.0
         ss = max(0.0, start_time - start)
         webm = a.cutout.lower().endswith('.webm')
         cmd = ['ffmpeg', '-v', 'error'] + (['-c:v', 'libvpx-vp9'] if webm else []) + ['-ss', f'{ss:.6f}', '-i', a.cutout, '-frames:v', str(N), '-vf', ('alphaextract,' if webm else '') + f'format=gray,scale={W}:{H}', '-f', 'rawvideo', '-']
@@ -190,4 +190,7 @@ def main():
         enc.wait()
         print(f'ok {a.output}: {k} frames from {start_time:.3f} to {(f0 + k) / fps:.3f} s in the cut (custom scene start: {np.floor(start_time * 1000) / 1000:.3f})')
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     main()

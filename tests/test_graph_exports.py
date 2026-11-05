@@ -21,9 +21,10 @@ class GraphExportTests(unittest.TestCase):
                 self.assertFalse(any('bolt://' in part or 'http://' in part for part in command))
 
     def test_mcp_uses_absolute_graph_and_stdio(self):
-        command = server_command(Path('/project with spaces'), '/tool/python')
+        root = Path(Path.cwd().anchor, 'project with spaces')
+        command = server_command(root, '/tool/python')
         self.assertEqual(command, ['/tool/python', '-m', 'graphify.serve',
-                                  '/project with spaces/graphify-out/graph.json', '--transport', 'stdio'])
+                                  str(root / 'graphify-out' / 'graph.json'), '--transport', 'stdio'])
 
 
 if __name__ == '__main__':

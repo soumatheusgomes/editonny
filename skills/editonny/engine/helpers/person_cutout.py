@@ -288,7 +288,7 @@ def average_size(path: Path | None, kind: str) -> tuple[int, int] | None:
             return (h, w) if orient in (5, 6, 7, 8) else (w, h)
         proc = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
                                "stream=width,height:stream_side_data=rotation", "-of", "json", str(path)],
-                              capture_output=True, text=True)
+                              capture_output=True, text=True, encoding='utf-8', errors='replace')
         st = (json.loads(proc.stdout or "{}").get("streams") or [{}])[0]
         w, h = int(st.get("width") or 0), int(st.get("height") or 0)
         rot = 0

@@ -123,7 +123,7 @@ FILTERS = ("highpass", "asendcmd", "afftdn")
 def ffmpeg_version() -> str:
     global _FF_VERSION, _FF_BUILD
     if _FF_VERSION is None:
-        out = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True).stdout
+        out = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True, encoding='utf-8', errors='replace').stdout
         _FF_VERSION = (out.splitlines() or ["ffmpeg"])[0].strip()
         _FF_BUILD = hashlib.sha1(out.encode()).hexdigest()[:16]    # version line + configuration: tells builds apart
     return _FF_VERSION

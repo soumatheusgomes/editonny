@@ -860,7 +860,7 @@ def _encoder(tmp: Path, size: tuple[int, int], fps: int) -> subprocess.Popen:
 
 def count_frames(path: Path) -> int:
     proc = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_packets", "-show_entries",
-                           "stream=nb_read_packets", "-of", "csv=p=0", str(path)], capture_output=True, text=True)
+                           "stream=nb_read_packets", "-of", "csv=p=0", str(path)], capture_output=True, text=True, encoding='utf-8', errors='replace')
     try:
         return int(proc.stdout.strip().split(",")[0])
     except ValueError:

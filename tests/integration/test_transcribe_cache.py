@@ -22,7 +22,7 @@ class TranscribeCacheTests(unittest.TestCase):
             video.write_bytes(b'aaaa')
             from common import file_signature
             cached.write_text(json.dumps({'source_sig': file_signature(video), 'engine': transcribe.engine_label('mlx', 'model'),
-                                         'language': 'en', 'requested_language': 'en', 'prompt': None}))
+                                         'language': 'en', 'requested_language': 'en', 'prompt': None}), encoding='utf-8')
             self.assertFalse(transcribe.is_cached(cached, video, 'mlx', 'model', None, None))
 
     def test_apple_silicon_without_mlx_uses_faster_whisper(self):

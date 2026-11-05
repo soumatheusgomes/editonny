@@ -12,7 +12,7 @@ DEFAULT_DELAY_MS = 71.0
 MIN_SEGMENT = 0.3
 
 def info(path):
-    out = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-count_packets', '-show_entries', 'stream=width,height,r_frame_rate,avg_frame_rate,nb_read_packets', '-show_entries', 'format=duration', '-of', 'json', path], capture_output=True, text=True)
+    out = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-count_packets', '-show_entries', 'stream=width,height,r_frame_rate,avg_frame_rate,nb_read_packets', '-show_entries', 'format=duration', '-of', 'json', path], capture_output=True, text=True, encoding='utf-8', errors='replace')
     if out.returncode != 0:
         sys.exit(f'error: could not read {path}')
     d = json.loads(out.stdout)
@@ -160,7 +160,7 @@ def main():
     ap.add_argument('--delay-ms', type=float, help='Use this delay instead of the measured value')
     ap.add_argument('--measure-only', action='store_true', help='Measure and report delay and source coverage without writing')
     a = ap.parse_args()
-    request_data = json.load(open(a.request))
+    request_data = json.load(open(a.request, encoding='utf-8'))
     submitted = request_data['file']
     if not os.path.exists(submitted):
         submitted = os.path.join(os.path.dirname(os.path.abspath(a.request)), os.path.basename(request_data['file']))
@@ -204,7 +204,7 @@ def main():
     primary_key = a.source_name
     edl = None
     if a.edl:
-        edl = json.load(open(a.edl))
+        edl = json.load(open(a.edl, encoding='utf-8'))
         # Resolve the file the renderer will read (render_cut.resolve_source rules).
         ref = os.path.expanduser(edl.get('synchronization') or 'synchronization.json')
         base = os.path.dirname(os.path.abspath(a.edl))
@@ -215,7 +215,7 @@ def main():
         if not primary_key:
             sys.exit(f"error: source {request_data['source']} is missing from sources in {a.edl}; supply --source-name")
     primary_key = primary_key or os.path.splitext(os.path.basename(request_data['source']))[0]
-    doc = json.load(open(sync_path)) if os.path.exists(sync_path) else {}
+    doc = json.load(open(sync_path, encoding='utf-8')) if os.path.exists(sync_path) else {}
     sources = doc.get('sources', {})
     # Reuse only the copy registered for these camera names; never overwrite any other file, such as the
     # original footage or another camera (a rebuild from backups gets a new name).
@@ -257,7 +257,7 @@ def main():
         if isinstance(sources.get(name), dict):
             f['adjustment_s'] = float(sources[name].get('adjustment_s') or 0.0)
         sources[name] = f
-    with open(sync_path, 'w') as fh:
+    with open(sync_path, 'w', encoding='utf-8') as fh:
         json.dump(doc, fh, ensure_ascii=False, indent=1)
     print(f"ok {sync_path}: {', '.join(names)} (primary {primary_key})")
     if edl is not None:
@@ -267,7 +267,7 @@ def main():
         for name in names:
             edl.setdefault('sources', {})[name] = cam
         (edl['ranges'], rel) = split_ranges(edl, primary_key, windows)
-        with open(a.edl, 'w') as fh:
+        with open(a.edl, 'w', encoding='utf-8') as fh:
             json.dump(edl, fh, ensure_ascii=False, indent=2)
         for l in rel:
             print('  ' + l)
@@ -275,4 +275,7 @@ def main():
             print('  warning: no EDL range overlaps generated coverage; check --start/--end and source')
         print(f'ok {a.edl} (original backup: {os.path.basename(backup)}; restore it and rerun this script for each clip to rebuild). Now rerun waveform_cut.py and render_cut.py.')
 if __name__ == '__main__':
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors=stream.errors)
     main()

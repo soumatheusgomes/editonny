@@ -44,10 +44,10 @@ def probe_capabilities() -> dict:
     result = {'ffmpeg': shutil.which('ffmpeg'), 'ffprobe': shutil.which('ffprobe'), 'filters': [], 'encoders': []}
     if not result['ffmpeg']:
         return result
-    version = subprocess.run([result['ffmpeg'], '-version'], capture_output=True, text=True, timeout=15)
+    version = subprocess.run([result['ffmpeg'], '-version'], capture_output=True, text=True, timeout=15, encoding='utf-8', errors='replace')
     result['version'] = version.stdout.splitlines()[0] if version.returncode == 0 and version.stdout else 'unavailable'
     for key in ('filters', 'encoders'):
-        process = subprocess.run([result['ffmpeg'], '-hide_banner', '-' + key], capture_output=True, text=True, timeout=15)
+        process = subprocess.run([result['ffmpeg'], '-hide_banner', '-' + key], capture_output=True, text=True, timeout=15, encoding='utf-8', errors='replace')
         if process.returncode:
             raise ValueError(f'Could not inspect FFmpeg {key}: {process.stderr[-300:]}')
         rows = [line.split() for line in process.stdout.splitlines()]

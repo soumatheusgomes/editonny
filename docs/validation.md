@@ -278,13 +278,28 @@ Checks on the final tree, after the five cycles:
 
 Limits: only the named scenes were rendered, on macOS Apple Silicon. The upgraded Python stack was not exercised on Linux or Intel macOS, and Faster Whisper was not run.
 
+## Windows portability (2026-11-05)
+
+On Windows 11 Pro x64 (Python 3.12.10, Node 24.16.0, uv 0.13.1, FFmpeg 9.0.2, Tesseract 5.5.0, Git with `core.autocrlf=true`), the checkout on `49714f2` failed 34 of 107 Python tests and 39 of 100 engine tests; `npm run test:engine` reported success after running 0 tests, and five Vitest files, the icon check, and the README art check failed. Causes and fixes, each covered by the suites below:
+
+- **Product: hashing refused real files.** `os.stat` reports creation time as `st_ctime` on Windows while `os.fstat` reports change time, so `content_hash` raised "Source changed while hashing" for any file modified after creation, which includes most recordings. The open handle is now compared without `st_ctime`; the two path stats still compare in full. This fixed 30 engine failures.
+- **Product: approval could accept rewritten bytes.** The preview identity cache keys on `st_ctime`, which does not change on a Windows rewrite; a same-size rewrite with restored mtime kept the old hash. Approval now rehashes the file (`file_info(fresh=True)`); `test_same_size_timestamp_replacement_invalidates_approval` failed before. The probe cache in `common.py` and the displayed hash still use that key, so on Windows they can be stale after such a rewrite until mtime or size changes.
+- **Product: text encoding.** Windows defaults to the ANSI code page. Text `open`/`read_text`/`write_text` calls now pass `encoding='utf-8'`, subprocess calls with `text=True` pass `encoding='utf-8', errors='replace'`, and entry points switch stdout/stderr to UTF-8 while keeping each stream's error handler (`surrogateescape`/`backslashreplace` stay intact on POSIX; `None` streams under `pythonw` are skipped). Before, `install.py` crashed printing `→` through a pipe, and `€`, `£`, and accented notes were corrupted.
+- **Product: registration without symlink privilege.** `install.py` registers agents with a symlink and falls back to a directory junction on `WinError 1314`. `install.py`, `visuals/media.py`, `visuals/resources.py`, `scripts/package.py`, and `scripts/graph_runtime.py` treat junctions as links. Without that, a junction under `skills/` or `docs/assets/readme` was packaged into the plugin; `test_package` failed with junctions before the change. An isolated install, idempotent reinstall, and uninstall through junctions were run with a temporary `--home`.
+- **Product: guide search race.** On a navigation slower than the 250 ms search debounce, a search still being typed replaced the destination of a clicked link (`library.spec.ts` "navigating away mid-search" failed 5 of 10 repetitions). Link clicks now cancel the pending search; a Vitest case failed before the fix, and 20 repetitions passed after.
+- **Tooling.** `.gitattributes` keeps text LF so byte-compared outputs match. npm scripts start Python through `scripts/python.mjs` and quote `test_*.py` with double quotes, since `cmd.exe` passed single quotes literally. `web/vitest.config.ts` normalizes alias paths to forward slashes. Test fixtures use drive-anchored absolute paths, create directory links through junctions when symlinks are not permitted, and skip only file-symlink cases (7 subtests here); a hardlink case was added to `test_output_cannot_replace_source_via_symlink_or_hardlink`. Playwright clipboard checks normalize the CRLF that the Windows clipboard stores.
+
+Checks on Windows after the changes: `npm run check` (107 Python with 7 skips, 21 Node, 284 Vitest, lint, both typechecks, 49 icons), `npm run test:engine` (100, 1 native skip), `npm run build`, `npm run test:browser` (183 passed, 27 conditional skips), `python editonny.py doctor` (all OK), `media status` (79/79), and `python scripts/smoke_engine.py` with `hyperframes@0.8.179`: lint, check, and a 3-second 1080×1920 24 fps H.264/AAC render; the frame at 1 s showed timecode frame 24 and the caption. A read-only independent review (Claude subagent; the native Codex reviewer named in `AGENTS.md` was not available in this session) found the strict error handler in the first stdout change and the missing junction check in `graph_runtime.py`, both fixed; the fix had no second review.
+
+Limits: `test:preview`, `test:scenes`, and `test:three` were not run because `agent-browser` is not installed here. Faster Whisper transcription, a real recording, long videos, and file-symlink refusal on Windows (skipped without Developer Mode) were not exercised. macOS evidence above was not re-run after these changes.
+
 ## Reproduce and invalidate
 
 ```sh
 npm ci --ignore-scripts
 npm run build
 npm run check
-python3 editonny.py doctor
+python3 editonny.py doctor   # Windows: python editonny.py doctor
 python3 editonny.py media status
 npm run test:engine
 npm run test:browser

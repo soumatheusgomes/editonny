@@ -28,8 +28,8 @@ class HdrFidelityTests(unittest.TestCase):
                 edit = root / 'edit'; edit.mkdir()
                 edl = edit / 'edl.json'
                 edl.write_text(json.dumps({'sources': {'s': str(source)}, 'ranges': [
-                    {'id': 'a', 'source': 's', 'start': 0, 'end': 1}]}))
-                result = subprocess.run([sys.executable, str(ROOT / 'skills/editonny/engine/helpers/render_cut.py'), str(edl), '--no-jcut'], capture_output=True, text=True)
+                    {'id': 'a', 'source': 's', 'start': 0, 'end': 1}]}), encoding='utf-8')
+                result = subprocess.run([sys.executable, str(ROOT / 'skills/editonny/engine/helpers/render_cut.py'), str(edl), '--no-jcut'], capture_output=True, text=True, encoding='utf-8', errors='replace')
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 facts = probe_video(edit / 'cut.mp4')
                 self.assertEqual(facts['bit_depth'], depth)
